@@ -18,6 +18,10 @@ public:
   TagTracking(rclcpp::Node* node);
   ~TagTracking();
 
+  tf2::Transform getTf2B2Chgpp() const { return tf2_b2chgpp_; }
+  tf2::Transform getTf2B2LeftPivot() const { return tf2_b2left_pivot_; }
+  tf2::Transform getTf2B2RightPivot() const { return tf2_b2right_pivot_; }
+
 private:
   void checkInitTf();
   void onTimer();

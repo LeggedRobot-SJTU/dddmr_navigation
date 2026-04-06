@@ -1,32 +1,39 @@
 #ifndef DDDMR_DOCKING__TRAJECTORY_GENERATOR_HPP_
 #define DDDMR_DOCKING__TRAJECTORY_GENERATOR_HPP_
 
-#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <rclcpp/rclcpp.hpp>
 
-namespace dddmr_docking
-{
+namespace dddmr_docking {
 
-class TrajectoryGenerator
-{
+struct Trajectory {
+  nav_msgs::msg::Path path_;
+  double v_;
+  double w_;
+  double score_;
+};
+
+class TrajectoryGenerator {
 public:
-  TrajectoryGenerator(rclcpp::Node* node);
+  TrajectoryGenerator(rclcpp::Node *node);
   ~TrajectoryGenerator();
 
-  nav_msgs::msg::Path generateTrajectory(double v, double w, double sim_time, double sim_granularity);
-  std::vector<nav_msgs::msg::Path> generateTrajectories();
+  Trajectory generateTrajectory(double v, double w, double sim_time,
+                                double sim_granularity);
+  void generateTrajectories();
+
+  std::vector<Trajectory> generated_trajectories_;
 
 private:
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
-  rclcpp::Node* node_;
+  rclcpp::Node *node_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   nav_msgs::msg::Odometry current_odom_;
-  std::vector<nav_msgs::msg::Path> generated_trajectories_;
 };
 
-}  // namespace dddmr_docking
+} // namespace dddmr_docking
 
-#endif  // DDDMR_DOCKING__TRAJECTORY_GENERATOR_HPP_
+#endif // DDDMR_DOCKING__TRAJECTORY_GENERATOR_HPP_

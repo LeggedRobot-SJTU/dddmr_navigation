@@ -88,8 +88,8 @@ void TagTracking::onTimer()
     tf2_b2left_pivot_ = tf2_b2chgpp_ * tf2_chgpp2left_pivot_;
     tf2_b2right_pivot_ = tf2_b2chgpp_ * tf2_chgpp2right_pivot_;
     
-    RCLCPP_INFO(node_->get_logger(), "Calculated base_link -> left_pivot: x=%.3f, y=%.3f", tf2_b2left_pivot_.getOrigin().x(), tf2_b2left_pivot_.getOrigin().y());
-    RCLCPP_INFO(node_->get_logger(), "Calculated base_link -> right_pivot: x=%.3f, y=%.3f", tf2_b2right_pivot_.getOrigin().x(), tf2_b2right_pivot_.getOrigin().y());
+    //RCLCPP_INFO(node_->get_logger(), "Calculated base_link -> left_pivot: x=%.3f, y=%.3f", tf2_b2left_pivot_.getOrigin().x(), tf2_b2left_pivot_.getOrigin().y());
+    //RCLCPP_INFO(node_->get_logger(), "Calculated base_link -> right_pivot: x=%.3f, y=%.3f", tf2_b2right_pivot_.getOrigin().x(), tf2_b2right_pivot_.getOrigin().y());
   } catch (const tf2::TransformException & ex) {
     RCLCPP_INFO(node_->get_logger(), "Could not transform from camera to tag: %s", ex.what());
   }

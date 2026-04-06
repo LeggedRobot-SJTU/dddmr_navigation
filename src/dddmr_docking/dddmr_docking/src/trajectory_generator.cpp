@@ -2,25 +2,25 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-namespace dddmr_docking
-{
+namespace dddmr_docking {
 
-TrajectoryGenerator::TrajectoryGenerator(rclcpp::Node* node)
-: node_(node)
-{
+TrajectoryGenerator::TrajectoryGenerator(rclcpp::Node *node) : node_(node) {
   odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-    "odom", 10, std::bind(&TrajectoryGenerator::odomCallback, this, std::placeholders::_1));
+      "odom", 10,
+      std::bind(&TrajectoryGenerator::odomCallback, this,
+                std::placeholders::_1));
 
   RCLCPP_INFO(node_->get_logger(), "TrajectoryGenerator initialized.");
 }
 
-void TrajectoryGenerator::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
-{
+void TrajectoryGenerator::odomCallback(
+    const nav_msgs::msg::Odometry::SharedPtr msg) {
   current_odom_ = *msg;
 }
 
-nav_msgs::msg::Path TrajectoryGenerator::generateTrajectory(double v, double w, double sim_time, double sim_granularity)
-{
+Trajectory TrajectoryGenerator::generateTrajectory(double v, double w,
+                                                   double sim_time,
+                                                   double sim_granularity) {
   nav_msgs::msg::Path path;
   path.header.stamp = node_->now();
   path.header.frame_id = "base_link";
@@ -28,7 +28,7 @@ nav_msgs::msg::Path TrajectoryGenerator::generateTrajectory(double v, double w, 
   double x = 0.0;
   double y = 0.0;
   double theta = 0.0;
-  
+
   if (sim_granularity <= 0.0) {
     sim_granularity = 0.1;
   }
@@ -51,28 +51,32 @@ nav_msgs::msg::Path TrajectoryGenerator::generateTrajectory(double v, double w, 
     theta += w * sim_granularity;
   }
 
-  return path;
+  Trajectory trajectory;
+  trajectory.path_ = path;
+  trajectory.v_ = v;
+  trajectory.w_ = w;
+  trajectory.score_ = 0.0;
+  return trajectory;
 }
 
-std::vector<nav_msgs::msg::Path> TrajectoryGenerator::generateTrajectories()
-{
-  std::vector<nav_msgs::msg::Path> all_trajectories;
+void TrajectoryGenerator::generateTrajectories() {
+  std::vector<Trajectory> all_trajectories;
   double sim_time = 1.0;
   double sim_granularity = 0.1;
-  for (double v = -0.5; v <= 0.5001; v += 0.1) {
+  for (double v = -0.2; v <= 0.2001; v += 0.1) {
     for (double w = -1.0; w <= 1.0001; w += 0.1) {
-      nav_msgs::msg::Path p = generateTrajectory(v, w, sim_time, sim_granularity);
+      if (v == 0)
+        continue;
+      Trajectory p = generateTrajectory(v, w, sim_time, sim_granularity);
       all_trajectories.push_back(p);
     }
   }
 
   generated_trajectories_ = all_trajectories;
-  return all_trajectories;
 }
 
-TrajectoryGenerator::~TrajectoryGenerator()
-{
+TrajectoryGenerator::~TrajectoryGenerator() {
   // Cleanup
 }
 
-}  // namespace dddmr_docking
+} // namespace dddmr_docking
