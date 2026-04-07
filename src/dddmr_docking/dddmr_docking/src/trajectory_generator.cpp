@@ -63,8 +63,8 @@ void TrajectoryGenerator::generateTrajectories() {
   std::vector<Trajectory> all_trajectories;
   double sim_time = 1.0;
   double sim_granularity = 0.1;
-  for (double v = -0.2; v <= 0.2001; v += 0.1) {
-    for (double w = -1.0; w <= 1.0001; w += 0.1) {
+  for (double v = -0.1; v <= 0.1001; v += 0.1) {
+    for (double w = -0.1; w <= 0.11; w += 0.05) {
       if (v == 0)
         continue;
       Trajectory p = generateTrajectory(v, w, sim_time, sim_granularity);
