@@ -7,7 +7,7 @@ namespace dddmr_docking
 {
 
 TagTracking::TagTracking(rclcpp::Node* node)
-: node_(node)
+: node_(node), odom_received_(false)
 {
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -15,8 +15,34 @@ TagTracking::TagTracking(rclcpp::Node* node)
   init_timer_ = node_->create_wall_timer(
     200ms, std::bind(&TagTracking::checkInitTf, this));
 
+  odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
+      "odom", 10,
+      std::bind(&TagTracking::odomCallback, this,
+                std::placeholders::_1));
+
+  tag_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+      "tag_pose", 10,
+      std::bind(&TagTracking::tagPoseCallback, this,
+                std::placeholders::_1));
+
   RCLCPP_INFO(node_->get_logger(), "TagTracking initialized. Waiting for base_link to camera TF...");
 }
+
+void TagTracking::odomCallback(
+    const nav_msgs::msg::Odometry::SharedPtr msg) {
+  current_odom_ = *msg;
+  tf2::fromMsg(current_odom_.pose.pose, tf2_odom2b_);
+  odom_received_ = true;
+}
+
+void TagTracking::tagPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+  current_tag_pose_ = *msg;
+  latest_tag_odom_ = current_odom_;
+  tf2::fromMsg(current_tag_pose_.pose, tf2_c2tag_);
+  tf2::fromMsg(latest_tag_odom_.pose.pose, tf2_odom2lastb_);
+  tf2_lastb2tag_ = tf2_b2c_ * tf2_c2tag_;
+}
+
 
 void TagTracking::checkInitTf()
 {
@@ -76,23 +102,24 @@ void TagTracking::checkInitTf()
 
 void TagTracking::onTimer()
 {
-  try {
-    auto transform = tf_buffer_->lookupTransform("camera", "tag", tf2::TimePointZero);
-    camera_to_tag_pose_.header = transform.header;
-    camera_to_tag_pose_.pose.position.x = transform.transform.translation.x;
-    camera_to_tag_pose_.pose.position.y = transform.transform.translation.y;
-    camera_to_tag_pose_.pose.position.z = transform.transform.translation.z;
-    camera_to_tag_pose_.pose.orientation = transform.transform.rotation;
-    tf2::fromMsg(camera_to_tag_pose_.pose, tf2_c2tag_);
-    tf2_b2chgpp_ = tf2_b2c_ * tf2_c2tag_ * tf2_tag2chgpp_;
-    tf2_b2left_pivot_ = tf2_b2chgpp_ * tf2_chgpp2left_pivot_;
-    tf2_b2right_pivot_ = tf2_b2chgpp_ * tf2_chgpp2right_pivot_;
-    
-    //RCLCPP_INFO(node_->get_logger(), "Calculated base_link -> left_pivot: x=%.3f, y=%.3f", tf2_b2left_pivot_.getOrigin().x(), tf2_b2left_pivot_.getOrigin().y());
-    //RCLCPP_INFO(node_->get_logger(), "Calculated base_link -> right_pivot: x=%.3f, y=%.3f", tf2_b2right_pivot_.getOrigin().x(), tf2_b2right_pivot_.getOrigin().y());
-  } catch (const tf2::TransformException & ex) {
-    RCLCPP_INFO(node_->get_logger(), "Could not transform from camera to tag: %s", ex.what());
+  
+  //pre_integrate_tag_pose;
+  //in theory, if odom and tag are the latest, tf2_odom2lastb and tf2_odom2b should be the same
+  //when tag is being blocked, the difference between tf2_odom2b and tf2_odom2lastb will be used to compensate tag pose
+  
+  if(!odom_received_){
+    RCLCPP_ERROR(node_->get_logger(), "Check your odom topic!");
+    return;
   }
+    
+  //odom has moved:
+  tf2::Transform tf2_b2lastb = tf2_odom2b_.inverse()*tf2_odom2lastb_;
+  tf2::Transform tf2_b2tag = tf2_b2lastb*tf2_lastb2tag_;
+
+  tf2_b2chgpp_ = tf2_b2tag * tf2_tag2chgpp_;
+  tf2_b2left_pivot_ = tf2_b2chgpp_ * tf2_chgpp2left_pivot_;
+  tf2_b2right_pivot_ = tf2_b2chgpp_ * tf2_chgpp2right_pivot_;
+  
 }
 
 TagTracking::~TagTracking()

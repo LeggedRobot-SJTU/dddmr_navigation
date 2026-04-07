@@ -74,6 +74,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    dddmr_tag_pose_pub_node = Node(
+        package='dddmr_tag_pose_publisher',
+        executable='tag_pose_publisher',
+        name='tag_pose_publisher',
+        output='screen'
+    )
+
     return LaunchDescription([
         cmd2odom_node,
         b2c_tf_node,
@@ -83,4 +90,5 @@ def generate_launch_description():
         cpp2right_pivot_tf_node,
         rviz_node,
         dddmr_docking_node,
+        dddmr_tag_pose_pub_node
     ])

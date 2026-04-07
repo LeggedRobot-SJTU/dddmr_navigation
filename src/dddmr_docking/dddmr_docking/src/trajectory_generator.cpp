@@ -5,17 +5,8 @@
 namespace dddmr_docking {
 
 TrajectoryGenerator::TrajectoryGenerator(rclcpp::Node *node) : node_(node) {
-  odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-      "odom", 10,
-      std::bind(&TrajectoryGenerator::odomCallback, this,
-                std::placeholders::_1));
 
   RCLCPP_INFO(node_->get_logger(), "TrajectoryGenerator initialized.");
-}
-
-void TrajectoryGenerator::odomCallback(
-    const nav_msgs::msg::Odometry::SharedPtr msg) {
-  current_odom_ = *msg;
 }
 
 Trajectory TrajectoryGenerator::generateTrajectory(double v, double w,

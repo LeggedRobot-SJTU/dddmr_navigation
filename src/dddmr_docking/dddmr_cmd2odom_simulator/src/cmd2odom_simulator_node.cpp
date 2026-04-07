@@ -3,6 +3,7 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <nav_msgs/msg/odometry.hpp>
 
 class Cmd2OdomSimulatorNode : public rclcpp::Node
 {
@@ -16,6 +17,8 @@ public:
 
     last_time_ = this->now();
     last_cmd_vel_time_ = this->now();
+
+    odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom", 10);
 
     // Update kinematics at 50Hz (20ms)
     timer_ = this->create_wall_timer(
@@ -72,9 +75,28 @@ private:
     t.transform.rotation.w = q.w();
 
     tf_broadcaster_->sendTransform(t);
+
+    nav_msgs::msg::Odometry odom;
+    odom.header.stamp = current_time;
+    odom.header.frame_id = "odom";
+    odom.child_frame_id = "base_link";
+
+    odom.pose.pose.position.x = x_;
+    odom.pose.pose.position.y = y_;
+    odom.pose.pose.position.z = 0.0;
+    odom.pose.pose.orientation.x = q.x();
+    odom.pose.pose.orientation.y = q.y();
+    odom.pose.pose.orientation.z = q.z();
+    odom.pose.pose.orientation.w = q.w();
+
+    odom.twist.twist.linear.x = v_;
+    odom.twist.twist.angular.z = omega_;
+
+    odom_pub_->publish(odom);
   }
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 

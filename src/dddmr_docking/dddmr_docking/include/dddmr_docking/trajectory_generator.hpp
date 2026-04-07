@@ -2,7 +2,6 @@
 #define DDDMR_DOCKING__TRAJECTORY_GENERATOR_HPP_
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -27,11 +26,9 @@ public:
   std::vector<Trajectory> generated_trajectories_;
 
 private:
-  void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
   rclcpp::Node *node_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
-  nav_msgs::msg::Odometry current_odom_;
+
 };
 
 } // namespace dddmr_docking

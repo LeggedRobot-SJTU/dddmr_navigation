@@ -8,6 +8,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 namespace dddmr_docking
 {
@@ -25,7 +26,9 @@ public:
 private:
   void checkInitTf();
   void onTimer();
-
+  void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void tagPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+  
   rclcpp::Node* node_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
@@ -44,6 +47,18 @@ private:
   tf2::Transform tf2_chgpp2right_pivot_;
   tf2::Transform tf2_b2left_pivot_;
   tf2::Transform tf2_b2right_pivot_;
+  tf2::Transform tf2_lastb2tag_;
+  tf2::Transform tf2_odom2lastb_;
+  tf2::Transform tf2_odom2b_;
+
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  nav_msgs::msg::Odometry current_odom_;
+  nav_msgs::msg::Odometry latest_tag_odom_;
+
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr tag_pose_sub_;
+  geometry_msgs::msg::PoseStamped current_tag_pose_;
+
+  bool odom_received_;
 };
 
 }  // namespace dddmr_docking
