@@ -4,27 +4,43 @@
 #include "dddmr_docking/tag_tracking.hpp"
 #include "dddmr_docking/trajectory_generator.hpp"
 #include <memory>
+#include <string>
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include "rclcpp_action/rclcpp_action.hpp"
+#include "dddmr_sys_core/action/tag_docking.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 
 namespace dddmr_docking {
 
-class MPCDocking {
+class MPCDocking : public rclcpp::Node {
 public:
-  MPCDocking(rclcpp::Node *node);
+  explicit MPCDocking(const std::string &name);
   ~MPCDocking();
 
 private:
   void controlLoop();
 
-  rclcpp::Node *node_;
   std::unique_ptr<dddmr_docking::TagTracking> tag_tracking_;
   std::unique_ptr<dddmr_docking::TrajectoryGenerator> trajectory_generator_;
-  rclcpp::TimerBase::SharedPtr control_timer_;
-  bool ratingIsInTriangle(dddmr_docking::Trajectory &path);
-  void ratingInTriangle(dddmr_docking::Trajectory &path);
+
+  rclcpp_action::GoalResponse handle_goal(
+      const rclcpp_action::GoalUUID &uuid,
+      std::shared_ptr<const dddmr_sys_core::action::TagDocking::Goal> goal);
+
+  rclcpp_action::CancelResponse handle_cancel(
+      const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle);
+
+  void handle_accepted(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle);
+
+  void executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle);
+
+  rclcpp_action::Server<dddmr_sys_core::action::TagDocking>::SharedPtr action_server_;
+  rclcpp::CallbackGroup::SharedPtr action_server_group_;
+  std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> current_handle_;
+
   void ratingChgPP(dddmr_docking::Trajectory &path);
-  void ratingCrossingNull(dddmr_docking::Trajectory &path);
   void ratingCrossing(dddmr_docking::Trajectory &path);
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
 };

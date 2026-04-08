@@ -6,153 +6,105 @@ using namespace std::chrono_literals;
 
 namespace dddmr_docking {
 
-MPCDocking::MPCDocking(rclcpp::Node *node) : node_(node) {
-  tag_tracking_ = std::make_unique<dddmr_docking::TagTracking>(node_);
+MPCDocking::MPCDocking(const std::string &name) : Node(name) {
+  tag_tracking_ = std::make_unique<dddmr_docking::TagTracking>(this);
   trajectory_generator_ =
-      std::make_unique<dddmr_docking::TrajectoryGenerator>(node_);
+      std::make_unique<dddmr_docking::TrajectoryGenerator>(this);
 
   cmd_vel_pub_ =
-      node_->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+      this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
 
-  control_timer_ =
-      node_->create_wall_timer(50ms, std::bind(&MPCDocking::controlLoop, this));
+  action_server_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  action_server_ = rclcpp_action::create_server<dddmr_sys_core::action::TagDocking>(
+    this,
+    "/tag_docking",
+    std::bind(&MPCDocking::handle_goal, this, std::placeholders::_1, std::placeholders::_2),
+    std::bind(&MPCDocking::handle_cancel, this, std::placeholders::_1),
+    std::bind(&MPCDocking::handle_accepted, this, std::placeholders::_1),
+    rcl_action_server_get_default_options(),
+    action_server_group_
+  );
 
   RCLCPP_INFO(
-      node_->get_logger(),
-      "MPCDocking initialized with Tag Tracking and Trajectory Generator.");
+      this->get_logger(),
+      "MPCDocking action server initialized with Tag Tracking and Trajectory Generator.");
 }
 
 MPCDocking::~MPCDocking() {}
 
-bool MPCDocking::ratingIsInTriangle(dddmr_docking::Trajectory &path) {
-
-  if (path.score_<0 || path.path_.poses.empty()) {
-    path.score_ = -1;
-    return false;
-  }
-
-  // Get the last point of trajectory path
-  double px = 0.0;
-  double py = 0.0;
-
-  if (!tag_tracking_) {
-    path.score_ = -1;
-    return false;
-  }
-
-  tf2::Transform t1 = tag_tracking_->getTf2B2Chgpp();
-  double p1x = t1.getOrigin().x();
-  double p1y = t1.getOrigin().y();
-
-  tf2::Transform t2 = tag_tracking_->getTf2B2LeftPivot();
-  double p2x = t2.getOrigin().x();
-  double p2y = t2.getOrigin().y();
-
-  tf2::Transform t3 = tag_tracking_->getTf2B2RightPivot();
-  double p3x = t3.getOrigin().x();
-  double p3y = t3.getOrigin().y();
-
-  // Point in triangle test (barycentric coordinates proxy / edge side check)
-  auto sign = [](double p1x, double p1y, double p2x, double p2y, double p3x,
-                 double p3y) {
-    return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
-  };
-
-  bool has_neg = (sign(px, py, p1x, p1y, p2x, p2y) < 0.0) ||
-                 (sign(px, py, p2x, p2y, p3x, p3y) < 0.0) ||
-                 (sign(px, py, p3x, p3y, p1x, p1y) < 0.0);
-
-  bool has_pos = (sign(px, py, p1x, p1y, p2x, p2y) > 0.0) ||
-                 (sign(px, py, p2x, p2y, p3x, p3y) > 0.0) ||
-                 (sign(px, py, p3x, p3y, p1x, p1y) > 0.0);
-
-  bool is_inside = !(has_neg && has_pos);
-
-  if (is_inside) {
-    return true;
-  } else {
-    return false;
-  }
+rclcpp_action::GoalResponse MPCDocking::handle_goal(
+  const rclcpp_action::GoalUUID & uuid,
+  std::shared_ptr<const dddmr_sys_core::action::TagDocking::Goal> goal)
+{
+  (void)uuid;
+  (void)goal;
+  RCLCPP_INFO(this->get_logger(), "Received goal request for TagDocking");
+  return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
-void MPCDocking::ratingInTriangle(dddmr_docking::Trajectory &path) {
+rclcpp_action::CancelResponse MPCDocking::handle_cancel(
+  const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle)
+{
+  RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
+  (void)goal_handle;
+  return rclcpp_action::CancelResponse::ACCEPT;
+}
 
-  if (path.score_<0 || path.path_.poses.empty()) {
-    path.score_ = -1;
-    return;
+void MPCDocking::handle_accepted(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle)
+{
+  if (current_handle_ != nullptr && current_handle_->is_active()) {
+    RCLCPP_INFO(this->get_logger(), "An older goal is active, cancelling current one.");
+    auto result = std::make_shared<dddmr_sys_core::action::TagDocking::Result>();
+    result->succeed = false;
+    current_handle_->abort(result);
   }
-
-  // Get the last point of trajectory path
-  double px = path.path_.poses.back().pose.position.x;
-  double py = path.path_.poses.back().pose.position.y;
-
-  if (!tag_tracking_) {
-    path.score_ = -1;
-    return;
-  }
-
-  tf2::Transform t1 = tag_tracking_->getTf2B2Chgpp();
-  double p1x = t1.getOrigin().x();
-  double p1y = t1.getOrigin().y();
-
-  tf2::Transform t2 = tag_tracking_->getTf2B2LeftPivot();
-  double p2x = t2.getOrigin().x();
-  double p2y = t2.getOrigin().y();
-
-  tf2::Transform t3 = tag_tracking_->getTf2B2RightPivot();
-  double p3x = t3.getOrigin().x();
-  double p3y = t3.getOrigin().y();
-
-  // Point in triangle test (barycentric coordinates proxy / edge side check)
-  auto sign = [](double p1x, double p1y, double p2x, double p2y, double p3x,
-                 double p3y) {
-    return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
-  };
-
-  bool has_neg = (sign(px, py, p1x, p1y, p2x, p2y) < 0.0) ||
-                 (sign(px, py, p2x, p2y, p3x, p3y) < 0.0) ||
-                 (sign(px, py, p3x, p3y, p1x, p1y) < 0.0);
-
-  bool has_pos = (sign(px, py, p1x, p1y, p2x, p2y) > 0.0) ||
-                 (sign(px, py, p2x, p2y, p3x, p3y) > 0.0) ||
-                 (sign(px, py, p3x, p3y, p1x, p1y) > 0.0);
-
-  bool is_inside = !(has_neg && has_pos);
   
-  if(ratingIsInTriangle(path)){
+  current_handle_ = goal_handle;
 
-    if (is_inside) {
-      double px = path.path_.poses.back().pose.position.x;
-      double py = path.path_.poses.back().pose.position.y;
+  std::thread{std::bind(&MPCDocking::executeCb, this, std::placeholders::_1), goal_handle}.detach();
+}
 
-      tf2::Transform tf2_b2chgpp = tag_tracking_->getTf2B2Chgpp();
-      double cx = tf2_b2chgpp.getOrigin().x();
-      double cy = tf2_b2chgpp.getOrigin().y();
+void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle)
+{
+  rclcpp::Rate loop_rate(20);
+  auto result = std::make_shared<dddmr_sys_core::action::TagDocking::Result>();
+  rclcpp::Time success_start_time = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
 
-      double distance1 = fabs(px - cx);
-      double distance2 = fabs(py - cy);
-      double normalized_distance = distance1 + 2*distance2;
-      // Using the distance as a penalty for the score, e.g.:
-      path.score_ = 1.0 / (normalized_distance + 0.1); // max score 10
-    } else {
-      path.score_ = -1;
+  RCLCPP_INFO(this->get_logger(), "Executing goal");
+
+  while(rclcpp::ok() && goal_handle->is_active()) {
+    if (goal_handle->is_canceling()) {
+      goal_handle->canceled(result);
+      RCLCPP_INFO(this->get_logger(), "Goal canceled");
+      geometry_msgs::msg::Twist cmd_vel;
+      if (cmd_vel_pub_) cmd_vel_pub_->publish(cmd_vel);
+      return;
     }
-  }
-  else{
-    //back to center line as early as possible
-      double px = path.path_.poses.back().pose.position.x;
-      double py = path.path_.poses.back().pose.position.y;
 
-      tf2::Transform tf2_b2chgpp = tag_tracking_->getTf2B2Chgpp();
-      double cx = tf2_b2chgpp.getOrigin().x();
-      double cy = tf2_b2chgpp.getOrigin().y();
+    controlLoop();
 
-      double distance1 = fabs(px - cx);
-      double distance2 = fabs(py - cy);
-      double normalized_distance = distance1 + 2*distance2;
-      // Using the distance as a penalty for the score, e.g.:
-      path.score_ = 1.0 / (normalized_distance + 0.1); // max score 10
+    if (tag_tracking_) {
+      tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
+      double cx = t_chgpp.getOrigin().x();
+      double cy = t_chgpp.getOrigin().y();
       
+      if (std::hypot(cx, cy) < 0.01) {
+        if (success_start_time.nanoseconds() == 0) {
+          success_start_time = this->now();
+        } else if ((this->now() - success_start_time).seconds() >= 3.0) {
+          geometry_msgs::msg::Twist cmd_vel;
+          if (cmd_vel_pub_) cmd_vel_pub_->publish(cmd_vel);
+          result->succeed = true;
+          goal_handle->succeed(result);
+          RCLCPP_INFO(this->get_logger(), "Goal succeeded: tag within 0.01m for 3 seconds.");
+          return;
+        }
+      } else {
+        success_start_time = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
+      }
+    }
+
+    loop_rate.sleep();
   }
 }
 
@@ -177,41 +129,6 @@ void MPCDocking::ratingChgPP(dddmr_docking::Trajectory &path) {
 
   //RCLCPP_INFO(node_->get_logger(), "distance: %.3f, linear: %.2f, angular: %.2f, score: %.2f",
   //            distance, path.v_, path.w_, path.score_);
-}
-
-void MPCDocking::ratingCrossingNull(dddmr_docking::Trajectory &path) {
-
-  if (path.score_<0 || path.path_.poses.size() < 2 || !tag_tracking_) {
-    path.score_ = -1;
-    return;
-  }
-
-  double px = path.path_.poses.back().pose.position.x;
-  double py = path.path_.poses.back().pose.position.y;
-
-  tf2::Transform t_left = tag_tracking_->getTf2B2LeftPivot();
-  double lx = t_left.getOrigin().x();
-  double ly = t_left.getOrigin().y();
-
-  tf2::Transform t_right = tag_tracking_->getTf2B2RightPivot();
-  double rx = t_right.getOrigin().x();
-  double ry = t_right.getOrigin().y();
-
-  double distance_left = std::hypot(px - lx, py - ly);
-  double distance_right = std::hypot(px - rx, py - ry);
-
-//  RCLCPP_INFO(node_->get_logger(), "px:%.2f, py: %.2f, lx: %.2f, ly: %.2f, rx: %.2f, ry: %.2f, distance_left: %.3f, distance_right: %.3f", 
-//    px, py, lx ,ly, rx, ry, distance_left, distance_right);
-
-  if (distance_left > distance_right) {
-    if (path.w_ > 0)
-      path.score_ += 0.25 / (fabs(distance_left - distance_right) + 0.1);
-  } else if (distance_left < distance_right) {
-    if (path.w_ < 0)
-      path.score_ += 0.25 / (fabs(distance_left - distance_right) + 0.1);
-  }
-  RCLCPP_INFO(node_->get_logger(), "distance_left: %.3f, distance_right: %.3f, linear: %.2f, angular: %.2f, score: %.2f",
-              distance_left, distance_right, path.v_, path.w_, path.score_);
 }
 
 void MPCDocking::ratingCrossing(dddmr_docking::Trajectory &path) {

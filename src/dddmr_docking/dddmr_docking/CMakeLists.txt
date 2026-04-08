@@ -14,6 +14,8 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(dddmr_sys_core REQUIRED)
 
 add_executable(docking_node 
   src/docking_node.cpp
@@ -35,10 +37,17 @@ ament_target_dependencies(
   "tf2_ros"
   "tf2_geometry_msgs"
   "nav_msgs"
+  "rclcpp_action"
+  "dddmr_sys_core"
 )
 
 install(TARGETS
   docking_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(PROGRAMS
+  scripts/trigger_mpc_docking.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
