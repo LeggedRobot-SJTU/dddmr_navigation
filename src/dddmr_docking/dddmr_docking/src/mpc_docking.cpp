@@ -1,4 +1,4 @@
-#include "dddmr_docking/mpc_docking.hpp"
+#include "mpc_docking.hpp"
 #include <algorithm>
 #include <chrono>
 
@@ -11,13 +11,21 @@ MPCDocking::MPCDocking(const std::string &name) : Node(name) {
   trajectory_generator_ =
       std::make_unique<dddmr_docking::TrajectoryGenerator>(this);
 
+  //@Start to load cameras
+  this->declare_parameter("cameras", rclcpp::PARAMETER_STRING_ARRAY);
+  this->get_parameter("cameras", cameras_);
+  for(auto i=cameras_.begin(); i!=cameras_.end(); i++){
+    RCLCPP_INFO(this->get_logger(), "Use camera: %s", (*i).c_str());
+    apriltag_tracking_map_[(*i)] = std::make_shared<dddmr_docking::AprilTagTracking>(this, (*i));
+  }
+
   cmd_vel_pub_ =
       this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
 
   action_server_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   action_server_ = rclcpp_action::create_server<dddmr_sys_core::action::TagDocking>(
     this,
-    "/tag_docking",
+    "tag_docking",
     std::bind(&MPCDocking::handle_goal, this, std::placeholders::_1, std::placeholders::_2),
     std::bind(&MPCDocking::handle_cancel, this, std::placeholders::_1),
     std::bind(&MPCDocking::handle_accepted, this, std::placeholders::_1),

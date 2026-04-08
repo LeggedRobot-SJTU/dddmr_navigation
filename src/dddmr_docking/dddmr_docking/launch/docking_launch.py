@@ -67,10 +67,17 @@ def generate_launch_description():
         output='screen'
     )
 
+    the_yaml = os.path.join(
+        get_package_share_directory('dddmr_docking'),
+        'config',
+        'docking_params.yaml'
+    )
+
     dddmr_docking_node = Node(
         package='dddmr_docking',
         executable='docking_node',
         name='docking_node',
+        parameters = [the_yaml],
         output='screen'
     )
 

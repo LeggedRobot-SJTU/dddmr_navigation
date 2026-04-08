@@ -2,3 +2,45 @@
 docking_node:
   ros__parameters:
     use_sim_time: false
+    cameras: ["camera1", "camera2"]
+    camera1:
+      family: 36h11           # tag family name
+      max_hamming: 2          # maximum allowed hamming distance (corrected bits)
+      find_tag_frequency: 10.0
+      topic_image_raw: left_camera/color/image_raw
+      topic_image_info: left_camera/color/camera_info
+
+      # see "apriltag.h" 'struct apriltag_detector' for more documentation on these optional parameters
+      detector:
+          threads: 2          # number of threads
+          decimate: 1.0       # decimate resolution for quad detection
+          blur: 0.5           # sigma of Gaussian blur for quad detection
+          refine: True        # snap to strong gradients
+          sharpening: 0.5    # sharpening of decoded images
+          debug: False        # write additional debugging images to current working directory
+
+      # optional list of tags
+      tag:
+          ids: [1]            # tag ID
+          sizes: [0.06]   # optional tag-specific edge size
+          
+    camera2:
+      family: 36h11           # tag family name
+      max_hamming: 2          # maximum allowed hamming distance (corrected bits)
+      find_tag_frequency: 10.0
+      topic_image_raw: right_camera/color/image_raw
+      topic_image_info: right_camera/color/camera_info
+
+      # see "apriltag.h" 'struct apriltag_detector' for more documentation on these optional parameters
+      detector:
+          threads: 2          # number of threads
+          decimate: 1.0       # decimate resolution for quad detection
+          blur: 0.5           # sigma of Gaussian blur for quad detection
+          refine: True        # snap to strong gradients
+          sharpening: 0.5    # sharpening of decoded images
+          debug: False        # write additional debugging images to current working directory
+
+      # optional list of tags
+      tag:
+          ids: [1]            # tag ID
+          sizes: [0.06]   # optional tag-specific edge size

@@ -1,8 +1,9 @@
 #ifndef DDDMR_DOCKING__MPC_DOCKING_HPP_
 #define DDDMR_DOCKING__MPC_DOCKING_HPP_
 
-#include "dddmr_docking/tag_tracking.hpp"
-#include "dddmr_docking/trajectory_generator.hpp"
+#include "tag_tracking.hpp"
+#include "trajectory_generator.hpp"
+#include "apriltag_tracking.hpp"
 #include <memory>
 #include <string>
 #include <rclcpp/rclcpp.hpp>
@@ -43,6 +44,9 @@ private:
   void ratingChgPP(dddmr_docking::Trajectory &path);
   void ratingCrossing(dddmr_docking::Trajectory &path);
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+
+  std::vector<std::string> cameras_;
+  std::map<std::string, std::shared_ptr<dddmr_docking::AprilTagTracking>> apriltag_tracking_map_;
 };
 
 } // namespace dddmr_docking
