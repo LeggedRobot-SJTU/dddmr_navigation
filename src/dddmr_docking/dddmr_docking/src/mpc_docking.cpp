@@ -20,7 +20,7 @@ MPCDocking::MPCDocking(const std::string &name) : Node(name) {
   }
 
   cmd_vel_pub_ =
-      this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+      this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 2);
 
   action_server_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   action_server_ = rclcpp_action::create_server<dddmr_sys_core::action::TagDocking>(

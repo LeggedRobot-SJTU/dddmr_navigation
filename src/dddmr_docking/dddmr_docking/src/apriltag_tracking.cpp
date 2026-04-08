@@ -7,8 +7,7 @@ using namespace std::chrono_literals;
 namespace dddmr_docking {
 
 AprilTagTracking::AprilTagTracking(rclcpp::Node* node, std::string name) : node_(node), name_(name), 
-img_info_get_(false),
-td(apriltag_detector_create()) {
+img_info_get_(false), is_initial_(false), td(apriltag_detector_create()){
   
   //-----AprilTag Setup-----
   node_->declare_parameter(name_+".tag_family", rclcpp::ParameterValue("36h11"));
@@ -100,6 +99,9 @@ td(apriltag_detector_create()) {
     topic_image_info_, rclcpp::QoS(1).best_effort(),
     std::bind(&AprilTagTracking::cameraInfoCallback, this, std::placeholders::_1));
   
+  tag_pose_pub_ =
+      node_->create_publisher<geometry_msgs::msg::PoseStamped>("tag_pose", 2);
+
   auto loop_time = std::chrono::milliseconds(int(1000/detect_tag_frequency_));
   detect_tag_timer_ = node_->create_wall_timer(
     loop_time, std::bind(&AprilTagTracking::detectingLoop, this));
@@ -163,39 +165,49 @@ void AprilTagTracking::detectingLoop()
       // detection
 
       // 3D orientation and position
-      geometry_msgs::msg::TransformStamped tf;
-      tf.header = msg_img_->header;
+      geometry_msgs::msg::TransformStamped detected_tf;
+      detected_tf.header = msg_img_->header;
       // set child frame name by generic tag name or configured tag name
-      tf.child_frame_id = name_;
-      const double size = tag_sizes.count(det->id) ? tag_sizes.at(det->id) : tag_edge_size;
+      detected_tf.child_frame_id = name_;
+      double size;
+      if(tag_sizes.count(det->id)){
+        size = tag_sizes.at(det->id);
+      }
+      else{
+        RCLCPP_ERROR(node_->get_logger().get_child(name_), "Size of Tag ID: %d is not specified.", det->id);
+      }
       if(estimate_pose != nullptr) {
-          tf.transform = estimate_pose(det, intrinsics, size);
+          detected_tf.transform = estimate_pose(det, intrinsics, size);
       }
 
 
-      geometry_msgs::msg::PoseStamped before_pose;
-      before_pose.header = tf.header;
-      before_pose.pose.position.x = tf.transform.translation.x;
-      before_pose.pose.position.y = tf.transform.translation.y;
-      before_pose.pose.position.z = tf.transform.translation.z;
-      before_pose.pose.orientation.x = tf.transform.rotation.x;
-      before_pose.pose.orientation.y = tf.transform.rotation.y;
-      before_pose.pose.orientation.z = tf.transform.rotation.z;
-      before_pose.pose.orientation.w = tf.transform.rotation.w;
-      pose_pub_->publish(before_pose);
+      geometry_msgs::msg::PoseStamped detected_pose;
+      detected_pose.header = detected_tf.header;
+      detected_pose.pose.position.x = detected_tf.transform.translation.x;
+      detected_pose.pose.position.y = detected_tf.transform.translation.y;
+      detected_pose.pose.position.z = detected_tf.transform.translation.z;
+      detected_pose.pose.orientation.x = detected_tf.transform.rotation.x;
+      detected_pose.pose.orientation.y = detected_tf.transform.rotation.y;
+      detected_pose.pose.orientation.z = detected_tf.transform.rotation.z;
+      detected_pose.pose.orientation.w = detected_tf.transform.rotation.w;
 
       // origin tf
-      tf2::Transform tf2_origin;
-      tf2_origin.setOrigin(tf2::Vector3(tf.transform.translation.x, tf.transform.translation.y, tf.transform.translation.z));
-      tf2_origin.setRotation(tf2::Quaternion(
-      tf.transform.rotation.x, tf.transform.rotation.y, 
-      tf.transform.rotation.z, tf.transform.rotation.w));
+      tf2::Transform detected_tf2;
+      detected_tf2.setOrigin(tf2::Vector3(detected_tf.transform.translation.x, detected_tf.transform.translation.y, detected_tf.transform.translation.z));
+      detected_tf2.setRotation(tf2::Quaternion(
+          detected_tf.transform.rotation.x, detected_tf.transform.rotation.y, 
+          detected_tf.transform.rotation.z, detected_tf.transform.rotation.w));
 
       // use the tf2_static which rotate to our desire direction
 
-      // after tf
+      // rotate detected tf to our coordinate, i.e. convert z pointing front to x pointing front
+      tf2::Transform tf2_static_rotate;
+      tf2::Quaternion rorateQuaternion;
+      rorateQuaternion.setRPY(-1.5707963, 1.5707963, 0.0);
+      tf2_static_rotate.setRotation(rorateQuaternion);
+      tf2_static_rotate.setOrigin(tf2::Vector3(0.0, 0.0, 0.0));
       tf2::Transform tf2_after;
-      tf2_after.mult(tf2_origin,tf2_static_rotate_);
+      tf2_after.mult(detected_tf2, tf2_static_rotate);
 
       //filter stuff (stand at camera frame ,filter pitch)
       tf2::Quaternion tmp_quaternion(tf2_after.getRotation().x(), tf2_after.getRotation().y(), tf2_after.getRotation().z(), tf2_after.getRotation().w());
@@ -213,10 +225,10 @@ void AprilTagTracking::detectingLoop()
         is_initial_ = true;
       }
       if(fabs(diff_yaw)> 0.2){
-        RCLCPP_WARN(this->get_logger(), "Before current diff: %.10f", current_pitch_ );
+        //RCLCPP_WARN(node_->get_logger().get_child(name_), "Before current diff: %.10f", current_pitch_ );
         current_pitch_ = (last_pitch_*0.97) + (current_pitch_*0.03);
-        RCLCPP_WARN(this->get_logger(), "After current diff: %.10f", current_pitch_ );
-        RCLCPP_WARN(this->get_logger(), "----------------------");
+        //RCLCPP_WARN(node_->get_logger().get_child(name_), "After current diff: %.10f", current_pitch_ );
+        //RCLCPP_WARN(node_->get_logger().get_child(name_), "----------------------");
       }
       last_roll_ = current_roll_;
       last_pitch_ = current_pitch_;
@@ -226,24 +238,18 @@ void AprilTagTracking::detectingLoop()
       rorateQuaternion_do_filter.setRPY(current_roll_, current_pitch_, current_yaw_);
 
       geometry_msgs::msg::PoseStamped after_pose;
-      after_pose.header = tf.header;
+      after_pose.header = detected_tf.header;
       after_pose.pose.position.x = tf2_after.getOrigin().x();
       after_pose.pose.position.y = tf2_after.getOrigin().y();
       after_pose.pose.position.z = tf2_after.getOrigin().z();
-      //after_pose.pose.orientation.x =  tf2_after.getRotation().x();
-      //after_pose.pose.orientation.y =  tf2_after.getRotation().y();
-      //after_pose.pose.orientation.z =  tf2_after.getRotation().z();
-      //after_pose.pose.orientation.w =  tf2_after.getRotation().w();
       after_pose.pose.orientation.x = rorateQuaternion_do_filter.x();
       after_pose.pose.orientation.y = rorateQuaternion_do_filter.y();
       after_pose.pose.orientation.z = rorateQuaternion_do_filter.z();
       after_pose.pose.orientation.w = rorateQuaternion_do_filter.w();
-      pose_pub_after_->publish(after_pose);
+      tag_pose_pub_->publish(after_pose);
 
     }
-
     apriltag_detections_destroy(detections);
-    //RCLCPP_ERROR(this->get_logger(), "L end");
   }
 }
 

@@ -16,6 +16,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(dddmr_sys_core REQUIRED)
+find_package(angles REQUIRED)
 
 find_package(OpenCV REQUIRED COMPONENTS core calib3d)
 find_package(cv_bridge REQUIRED)
@@ -31,6 +32,7 @@ set(dependencies
   nav_msgs
   rclcpp_action
   dddmr_sys_core
+  angles
   cv_bridge
 )
 

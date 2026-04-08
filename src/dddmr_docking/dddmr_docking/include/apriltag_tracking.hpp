@@ -3,16 +3,26 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
-#include <std_msgs/msg/float32.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <string>
 #include <memory>
+#include <angles/angles.h>
+//tf2
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 // apriltag
 #include <apriltag.h>
 #include <apriltag_lib/tag_functions.hpp>
 #include <apriltag_lib/pose_estimation.hpp>
+
+//cv
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 
 namespace dddmr_docking {
 
@@ -27,7 +37,7 @@ private:
   std::string name_;
   rclcpp::Node* node_;
   rclcpp::Clock::SharedPtr clock_;
-
+  
   //@ apriltag library
   apriltag_family_t* tf;
   apriltag_detector_t* const td;
@@ -49,11 +59,17 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
   rclcpp::TimerBase::SharedPtr detect_tag_timer_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr tag_pose_pub_;
 
   sensor_msgs::msg::Image::ConstSharedPtr msg_img_;
   sensor_msgs::msg::CameraInfo::ConstSharedPtr msg_ci_;
   bool img_info_get_;
   double detect_tag_frequency_;
+  
+  double last_roll_, current_roll_;
+  double last_pitch_, current_pitch_;
+  double last_yaw_, current_yaw_;
+  double is_initial_;
 };
 
 } // namespace dddmr_docking
