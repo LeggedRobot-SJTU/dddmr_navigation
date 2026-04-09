@@ -35,7 +35,6 @@ private:
   rclcpp::TimerBase::SharedPtr init_timer_;
   rclcpp::TimerBase::SharedPtr timer_;
   geometry_msgs::msg::PoseStamped camera_to_tag_pose_;
-  geometry_msgs::msg::PoseStamped trans_b2c_;
   geometry_msgs::msg::PoseStamped trans_tag2chgpp_;
   geometry_msgs::msg::PoseStamped trans_chgpp2left_pivot_;
   geometry_msgs::msg::PoseStamped trans_chgpp2right_pivot_;
@@ -50,6 +49,8 @@ private:
   tf2::Transform tf2_lastb2tag_;
   tf2::Transform tf2_odom2lastb_;
   tf2::Transform tf2_odom2b_;
+  
+  std::map<std::string, tf2::Transform> tf2_b2c_map_;
 
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   nav_msgs::msg::Odometry current_odom_;

@@ -30,7 +30,9 @@ class AprilTagTracking
 public:
   AprilTagTracking(rclcpp::Node* node, std::string name);
   ~AprilTagTracking();
-
+  void startDetection();
+  void stopDetection();
+  
 private:
 
   std::string name_;

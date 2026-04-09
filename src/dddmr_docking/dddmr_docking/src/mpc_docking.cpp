@@ -77,6 +77,11 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
   rclcpp::Rate loop_rate(20);
   auto result = std::make_shared<dddmr_sys_core::action::TagDocking::Result>();
   rclcpp::Time success_start_time = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
+  
+  //@ Activate Tag Detector
+  for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
+    i->second->startDetection();
+  }
 
   RCLCPP_INFO(this->get_logger(), "Executing goal");
 
@@ -105,6 +110,11 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
           result->succeed = true;
           goal_handle->succeed(result);
           RCLCPP_INFO(this->get_logger(), "Goal succeeded: tag within 0.01m for 3 seconds.");
+
+          //Stop Detector
+          for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
+            i->second->stopDetection();
+          }
           return;
         }
       } else {

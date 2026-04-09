@@ -16,12 +16,12 @@ TagTracking::TagTracking(rclcpp::Node* node)
     200ms, std::bind(&TagTracking::checkInitTf, this));
 
   odom_sub_ = node_->create_subscription<nav_msgs::msg::Odometry>(
-      "odom", 10,
+      "odom", 2,
       std::bind(&TagTracking::odomCallback, this,
                 std::placeholders::_1));
 
   tag_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
-      "tag_pose", 10,
+      "tag_pose", 2,
       std::bind(&TagTracking::tagPoseCallback, this,
                 std::placeholders::_1));
 
@@ -37,12 +37,28 @@ void TagTracking::odomCallback(
 
 void TagTracking::tagPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
   current_tag_pose_ = *msg;
+  if(!tf2_b2c_map_.count(msg->header.frame_id)){
+    try {
+      geometry_msgs::msg::PoseStamped trans_b2c;
+      auto transform_b2c = tf_buffer_->lookupTransform("base_link", msg->header.frame_id, tf2::TimePointZero);
+      trans_b2c.header = transform_b2c.header;
+      trans_b2c.pose.position.x = transform_b2c.transform.translation.x;
+      trans_b2c.pose.position.y = transform_b2c.transform.translation.y;
+      trans_b2c.pose.position.z = transform_b2c.transform.translation.z;
+      trans_b2c.pose.orientation = transform_b2c.transform.rotation;
+      tf2::Transform tf2b2c;
+      tf2::fromMsg(trans_b2c.pose, tf2b2c);
+      tf2_b2c_map_[msg->header.frame_id] = tf2b2c;
+    } catch (const tf2::TransformException & ex) {
+      RCLCPP_ERROR(node_->get_logger(), "Failed to lookup baselink to sensor TF: %s", ex.what());
+      return; // Exit and try again next tick
+    }
+  }
   latest_tag_odom_ = current_odom_;
   tf2::fromMsg(current_tag_pose_.pose, tf2_c2tag_);
   tf2::fromMsg(latest_tag_odom_.pose.pose, tf2_odom2lastb_);
-  tf2_lastb2tag_ = tf2_b2c_ * tf2_c2tag_;
+  tf2_lastb2tag_ = tf2_b2c_map_[msg->header.frame_id] * tf2_c2tag_;
 }
-
 
 void TagTracking::checkInitTf()
 {
@@ -55,14 +71,6 @@ void TagTracking::checkInitTf()
     RCLCPP_INFO(node_->get_logger(), "Received all static TFs. Starting tracking timer.");
     
     try {
-      auto transform_b2c = tf_buffer_->lookupTransform("base_link", "camera", tf2::TimePointZero);
-      trans_b2c_.header = transform_b2c.header;
-      trans_b2c_.pose.position.x = transform_b2c.transform.translation.x;
-      trans_b2c_.pose.position.y = transform_b2c.transform.translation.y;
-      trans_b2c_.pose.position.z = transform_b2c.transform.translation.z;
-      trans_b2c_.pose.orientation = transform_b2c.transform.rotation;
-      tf2::fromMsg(trans_b2c_.pose, tf2_b2c_);
-
       auto transform_tag2cpp = tf_buffer_->lookupTransform("tag", "charging_parking_point", tf2::TimePointZero);
       trans_tag2chgpp_.header = transform_tag2cpp.header;
       trans_tag2chgpp_.pose.position.x = transform_tag2cpp.transform.translation.x;

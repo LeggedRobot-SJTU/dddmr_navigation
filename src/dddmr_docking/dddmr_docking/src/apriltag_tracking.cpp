@@ -77,14 +77,6 @@ img_info_get_(false), is_initial_(false){
   node_->get_parameter(name_+".detect_tag_frequency", detect_tag_frequency_);
   RCLCPP_INFO(node_->get_logger().get_child(name_), "detect_tag_frequency: %.1f", detect_tag_frequency_);
 
-  image_sub_ = node_->create_subscription<sensor_msgs::msg::Image>(
-    topic_image_raw_, rclcpp::QoS(1).best_effort(),
-    std::bind(&AprilTagTracking::imageCallback, this, std::placeholders::_1));
-
-  camera_info_sub_ = node_->create_subscription<sensor_msgs::msg::CameraInfo>(
-    topic_image_info_, rclcpp::QoS(1).best_effort(),
-    std::bind(&AprilTagTracking::cameraInfoCallback, this, std::placeholders::_1));
-  
   tag_pose_pub_ =
       node_->create_publisher<geometry_msgs::msg::PoseStamped>(name_+"/tag_pose", 2);
   
@@ -94,8 +86,31 @@ img_info_get_(false), is_initial_(false){
   auto loop_time = std::chrono::milliseconds(int(1000/detect_tag_frequency_));
   detect_tag_timer_ = node_->create_wall_timer(
     loop_time, std::bind(&AprilTagTracking::detectingLoop, this));
+  
+  stopDetection();
+}
 
+void AprilTagTracking::startDetection() {
+
+  image_sub_ = node_->create_subscription<sensor_msgs::msg::Image>(
+    topic_image_raw_, rclcpp::QoS(1).best_effort(),
+    std::bind(&AprilTagTracking::imageCallback, this, std::placeholders::_1));
+
+  camera_info_sub_ = node_->create_subscription<sensor_msgs::msg::CameraInfo>(
+    topic_image_info_, rclcpp::QoS(1).best_effort(),
+    std::bind(&AprilTagTracking::cameraInfoCallback, this, std::placeholders::_1));
+
+  detect_tag_timer_->reset();
   RCLCPP_INFO(node_->get_logger().get_child(name_), "AprilTagTracking initialized with best_effort QoS subscribers.");
+
+}
+
+void AprilTagTracking::stopDetection() {
+
+  image_sub_.reset();
+  camera_info_sub_.reset();
+  detect_tag_timer_->cancel();
+
 }
 
 AprilTagTracking::~AprilTagTracking() {
@@ -104,7 +119,7 @@ AprilTagTracking::~AprilTagTracking() {
 
 void AprilTagTracking::detectingLoop()
 {
-  
+
   if(msg_img_ == nullptr || msg_ci_ == nullptr){
     return;
   }

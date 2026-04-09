@@ -23,15 +23,6 @@ def generate_launch_description():
         output='screen'
     )
 
-    o2t_tf_node = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='camera_to_base_link_tf',
-        # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
-        arguments=['3.0', '-0.6', '0', '0', '0', '0', 'odom', 'tag'],
-        output='screen'
-    )
-
     t2cpp_tf_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
@@ -70,7 +61,7 @@ def generate_launch_description():
     the_yaml = os.path.join(
         get_package_share_directory('dddmr_docking'),
         'config',
-        'docking_params.yaml'
+        'realsense_docking_params.yaml'
     )
 
     dddmr_docking_node = Node(
@@ -78,24 +69,19 @@ def generate_launch_description():
         executable='docking_node',
         name='docking_node',
         parameters = [the_yaml],
+        remappings=[
+          ('tag_pose', 'camera1/tag_pose')
+        ],
         output='screen'
     )
 
-    dddmr_tag_pose_pub_node = Node(
-        package='dddmr_tag_pose_publisher',
-        executable='tag_pose_publisher',
-        name='tag_pose_publisher',
-        output='screen'
-    )
 
     return LaunchDescription([
         cmd2odom_node,
         b2c_tf_node,
-        o2t_tf_node,
         t2cpp_tf_node,
         cpp2left_pivot_tf_node,
         cpp2right_pivot_tf_node,
         rviz_node,
-        dddmr_docking_node,
-        dddmr_tag_pose_pub_node
+        dddmr_docking_node
     ])

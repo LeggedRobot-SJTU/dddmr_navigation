@@ -1,0 +1,26 @@
+# dddmr_docking parameters
+docking_node:
+  ros__parameters:
+    use_sim_time: false
+    cameras: ["camera1"]
+    camera1:
+      tag_family: tag36h11           # tag family name
+      max_hamming: 2          # maximum allowed hamming distance (corrected bits)
+      detect_tag_frequency: 20.0
+      topic_image_raw: /camera/camera/color/image_raw
+      topic_image_info: /camera/camera/color/camera_info
+
+      # see "apriltag.h" 'struct apriltag_detector' for more documentation on these optional parameters
+      detector:
+          threads: 2          # number of threads
+          decimate: 1.0       # decimate resolution for quad detection
+          blur: 0.0           # sigma of Gaussian blur for quad detection
+          refine_edges: False        # snap to strong gradients
+          decode_sharpening: 0.5    # sharpening of decoded images
+          debug: False        # write additional debugging images to current working directory
+
+      # optional list of tags
+      tag:
+          ids: [1]            # tag ID
+          sizes: [0.146]   # optional tag-specific edge size
+          
