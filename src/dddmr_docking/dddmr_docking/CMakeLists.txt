@@ -17,6 +17,7 @@ find_package(nav_msgs REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(dddmr_sys_core REQUIRED)
 find_package(angles REQUIRED)
+find_package(image_geometry REQUIRED)
 
 find_package(OpenCV REQUIRED COMPONENTS core calib3d)
 find_package(cv_bridge REQUIRED)
@@ -33,6 +34,7 @@ set(dependencies
   rclcpp_action
   dddmr_sys_core
   angles
+  image_geometry
   cv_bridge
 )
 
@@ -41,47 +43,19 @@ include_directories(
   ${dddmr_sys_core_INCLUDE_DIRS}
 )
 
-# database of tag functions
-add_library(tags
-  src/apriltag_lib/tag_functions.cpp
+# cit tag
+add_library(cit_tag_detector
+  src/apriltag_lib/cit_common_functions.cpp
 )
-target_link_libraries(tags
-  apriltag::apriltag
-)
-set_property(TARGET tags PROPERTY
-    POSITION_INDEPENDENT_CODE ON
-)
-
-# conversion functions as template specialisation
-add_library(conversion
-  src/apriltag_lib/conversion.cpp
-)
-target_link_libraries(conversion
+target_link_libraries(cit_tag_detector
   apriltag::apriltag
   Eigen3::Eigen
   opencv_core
 )
-ament_target_dependencies(conversion
+ament_target_dependencies(cit_tag_detector
   ${dependencies}
 )
-set_property(TARGET conversion PROPERTY
-    POSITION_INDEPENDENT_CODE ON
-)
-
-# pose estimation methods
-add_library(pose_estimation
-  src/apriltag_lib/pose_estimation.cpp
-)
-target_link_libraries(pose_estimation
-  apriltag::apriltag
-  Eigen3::Eigen
-  opencv_calib3d
-  conversion
-)
-ament_target_dependencies(pose_estimation
-  ${dependencies}
-)
-set_property(TARGET pose_estimation PROPERTY
+set_property(TARGET cit_tag_detector PROPERTY
     POSITION_INDEPENDENT_CODE ON
 )
 
@@ -89,8 +63,7 @@ add_library(apriltag_tracking SHARED
   src/apriltag_tracking.cpp
 )
 target_link_libraries(apriltag_tracking
-  tags
-  pose_estimation
+  cit_tag_detector
 )
 ament_target_dependencies(apriltag_tracking
   ${dependencies}
@@ -115,9 +88,7 @@ ament_target_dependencies(docking_node
 )
 
 install(TARGETS
-  tags
-  conversion
-  pose_estimation
+  cit_tag_detector
   apriltag_tracking
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -143,6 +114,6 @@ install(DIRECTORY
 )
 
 ament_export_include_directories(include)
-ament_export_libraries(tags conversion pose_estimation apriltag_tracking)
+ament_export_libraries(cit_tag_detector apriltag_tracking)
 ament_export_dependencies(${dependencies})
 ament_package()

@@ -15,8 +15,7 @@
 
 // apriltag
 #include <apriltag.h>
-#include <apriltag_lib/tag_functions.hpp>
-#include <apriltag_lib/pose_estimation.hpp>
+#include <apriltag_lib/cit_common_functions.h>
 
 //cv
 #include <cv_bridge/cv_bridge.h>
@@ -38,16 +37,20 @@ private:
   rclcpp::Node* node_;
   rclcpp::Clock::SharedPtr clock_;
   
-  //@ apriltag library
-  apriltag_family_t* tf;
-  apriltag_detector_t* const td;
+  //@ AprilTag 2 code's attributes
+  std::shared_ptr<apriltag_ros::TagDetector> tag_detector_;
   std::string tag_family_;
-  std::atomic<int> max_hamming;
-  std::atomic<bool> profile;
+  int threads_;
+  double decimate_;
+  double blur_;
+  bool refine_edges_;
+  double decode_sharpening_;
+  bool debug_;
+  int max_hamming_distance_ = 2;  // Tunable, but really, 2 is a good choice. Values of >=3
+                                  // consume prohibitively large amounts of memory, and otherwise
+                                  // you want the largest value possible.
   std::unordered_map<int, std::string> tag_frames;
   std::unordered_map<int, double> tag_sizes;
-  std::function<void(apriltag_family_t*)> tf_destructor;
-  pose_estimation_f estimate_pose = nullptr;
 
   std::string topic_image_raw_;
   std::string topic_image_info_;
@@ -60,6 +63,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
   rclcpp::TimerBase::SharedPtr detect_tag_timer_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr tag_pose_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr result_image_pub_;
 
   sensor_msgs::msg::Image::ConstSharedPtr msg_img_;
   sensor_msgs::msg::CameraInfo::ConstSharedPtr msg_ci_;
@@ -70,6 +74,9 @@ private:
   double last_pitch_, current_pitch_;
   double last_yaw_, current_yaw_;
   double is_initial_;
+
+  cv_bridge::CvImagePtr cv_image_;
+  std::map<int, double> id_size_map_;
 };
 
 } // namespace dddmr_docking
