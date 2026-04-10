@@ -28,7 +28,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         name='camera_to_base_link_tf',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
-        arguments=['3.0', '-0.6', '0', '0', '0', '0', 'odom', 'tag'],
+        arguments=['2.0', '-0.4', '0', '0', '0', '0', 'odom', 'tag'],
         output='screen'
     )
 

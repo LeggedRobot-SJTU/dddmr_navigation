@@ -3,9 +3,10 @@ Panels:
     Help Height: 70
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /Pose1/Topic1
       Splitter Ratio: 0.5
-    Tree Height: 389
+    Tree Height: 288
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -38,27 +39,27 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_link:
-          Value: false
+          Value: true
         camera_color_frame:
-          Value: true
+          Value: false
         camera_color_optical_frame:
-          Value: true
+          Value: false
         camera_depth_frame:
-          Value: true
+          Value: false
         camera_depth_optical_frame:
-          Value: true
+          Value: false
         camera_link:
-          Value: true
+          Value: false
         charging_left_pivot_point:
-          Value: true
+          Value: false
         charging_parking_point:
-          Value: true
+          Value: false
         charging_right_pivot_point:
-          Value: true
+          Value: false
         odom:
           Value: false
         tag:
-          Value: true
+          Value: false
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -74,27 +75,7 @@ Visualization Manager:
               camera_depth_frame:
                 camera_depth_optical_frame:
                   {}
-          tag:
-            charging_parking_point:
-              charging_left_pivot_point:
-                {}
-              charging_right_pivot_point:
-                {}
       Update Interval: 0
-      Value: true
-    - Class: rviz_default_plugins/Image
-      Enabled: true
-      Max Value: 1
-      Median window: 5
-      Min Value: 0
-      Name: RS
-      Normalize Range: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /camera/camera/color/image_raw
       Value: true
     - Alpha: 1
       Axes Length: 1
@@ -104,10 +85,10 @@ Visualization Manager:
       Enabled: true
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
-      Name: TagPose
+      Name: Pose
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
-      Shape: Arrow
+      Shape: Axes
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -135,35 +116,33 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 4.271403789520264
+      Distance: 4.351905822753906
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.2979837656021118
-        Y: -0.04472803696990013
-        Z: 0.1439560055732727
+        X: 0.9975753426551819
+        Y: -0.6075760126113892
+        Z: 0.14365698397159576
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 0.8047970533370972
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.140403985977173
+      Yaw: 0.70539391040802
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 800
+  Height: 801
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000019b000002cafc0200000004fb000000100044006900730070006c006100790073010000003b00000206000000c700fffffffb0000000a0056006900650077007300000001e100000124000000a000fffffffb0000000a0049006d0061006700650000000247000000be0000000000000000fb00000004005200530100000247000000be0000002800ffffff0000046d000002ca00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
-  RS:
-    collapsed: false
+  QMainWindow State: 000000ff00000000fd00000001000000000000019b000002cbfc0200000002fb000000100044006900730070006c006100790073010000003b000001a1000000c700fffffffb0000000a0056006900650077007301000001e200000124000000a000ffffff0000046d000002cb00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1550

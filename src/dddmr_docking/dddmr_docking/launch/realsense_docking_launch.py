@@ -5,7 +5,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('dddmr_docking')
-    rviz_config_file = os.path.join(pkg_share, 'rviz', 'docking.rviz')
+    rviz_config_file = os.path.join(pkg_share, 'rviz', 'realsense_example.rviz')
 
     cmd2odom_node = Node(
         package='dddmr_cmd2odom_simulator',

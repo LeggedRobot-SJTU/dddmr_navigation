@@ -101,7 +101,7 @@ void AprilTagTracking::startDetection() {
     std::bind(&AprilTagTracking::cameraInfoCallback, this, std::placeholders::_1));
 
   detect_tag_timer_->reset();
-  RCLCPP_INFO(node_->get_logger().get_child(name_), "AprilTagTracking initialized with best_effort QoS subscribers.");
+  RCLCPP_INFO(node_->get_logger().get_child(name_), "%s initialized with best_effort QoS subscribers.", name_.c_str());
 
 }
 
@@ -110,6 +110,7 @@ void AprilTagTracking::stopDetection() {
   image_sub_.reset();
   camera_info_sub_.reset();
   detect_tag_timer_->cancel();
+  RCLCPP_INFO(node_->get_logger().get_child(name_), "%s is stopped.", name_.c_str());
 
 }
 
@@ -139,8 +140,8 @@ void AprilTagTracking::detectingLoop()
   //tag_detector_->drawDetections(cv_image_);
   //sensor_msgs::msg::Image::SharedPtr msg = cv_image_->toImageMsg();
   //result_image_pub_->publish(*msg);
-
-  tag_pose_pub_->publish(pose_out);
+  if(pose_out.header.frame_id!="")
+    tag_pose_pub_->publish(pose_out);
 }
 
 void AprilTagTracking::imageCallback(const sensor_msgs::msg::Image::SharedPtr msg) {

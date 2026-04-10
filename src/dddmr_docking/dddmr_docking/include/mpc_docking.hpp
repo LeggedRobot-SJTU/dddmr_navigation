@@ -21,6 +21,9 @@ public:
   ~MPCDocking();
 
 private:
+  
+  rclcpp::Clock::SharedPtr clock_;
+  
   void controlLoop();
 
   std::unique_ptr<dddmr_docking::TagTracking> tag_tracking_;

@@ -7,6 +7,9 @@ using namespace std::chrono_literals;
 namespace dddmr_docking {
 
 MPCDocking::MPCDocking(const std::string &name) : Node(name) {
+
+  clock_ = this->get_clock();
+
   tag_tracking_ = std::make_unique<dddmr_docking::TagTracking>(this);
   trajectory_generator_ =
       std::make_unique<dddmr_docking::TrajectoryGenerator>(this);
@@ -76,12 +79,16 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
 {
   rclcpp::Rate loop_rate(20);
   auto result = std::make_shared<dddmr_sys_core::action::TagDocking::Result>();
-  rclcpp::Time success_start_time = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
+
+  rclcpp::Time tracking_start_time = clock_->now();
+  rclcpp::Time success_start_time = clock_->now();
   
   //@ Activate Tag Detector
   for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
     i->second->startDetection();
   }
+  //@ ACtivate Tag Tracking
+  tag_tracking_->startTracking();
 
   RCLCPP_INFO(this->get_logger(), "Executing goal");
 
@@ -90,37 +97,63 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
       goal_handle->canceled(result);
       RCLCPP_INFO(this->get_logger(), "Goal canceled");
       geometry_msgs::msg::Twist cmd_vel;
-      if (cmd_vel_pub_) cmd_vel_pub_->publish(cmd_vel);
+      cmd_vel_pub_->publish(cmd_vel);
       return;
     }
+    
+    //@ if tracking does not come within 3 seconds, we abort
+    if(!tag_tracking_->isTrackingValid()){
+      if ((clock_->now() - tracking_start_time).seconds() >= 3.0){
+        geometry_msgs::msg::Twist cmd_vel;
+        cmd_vel_pub_->publish(cmd_vel);
+        result->succeed = false;
+        goal_handle->abort(result);
+
+        RCLCPP_ERROR(this->get_logger(), 
+              "Goal aborted: tracking is not valid for 3 seconds: odom: %d, tag: %d, tf: %d",
+               tag_tracking_->odom_received_, tag_tracking_->tag_received_, tag_tracking_->tf_initialized_);
+
+        //Stop Detector
+        for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
+          i->second->stopDetection();
+        }
+        //Stop Tracking
+        tag_tracking_->stopTracking();
+        return;
+      }
+      continue;
+    }
+    else{
+      tracking_start_time = clock_->now();
+    }
+      
 
     controlLoop();
 
-    if (tag_tracking_) {
-      tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
-      double cx = t_chgpp.getOrigin().x();
-      double cy = t_chgpp.getOrigin().y();
-      
-      if (std::hypot(cx, cy) < 0.01) {
-        if (success_start_time.nanoseconds() == 0) {
-          success_start_time = this->now();
-        } else if ((this->now() - success_start_time).seconds() >= 3.0) {
-          geometry_msgs::msg::Twist cmd_vel;
-          if (cmd_vel_pub_) cmd_vel_pub_->publish(cmd_vel);
-          result->succeed = true;
-          goal_handle->succeed(result);
-          RCLCPP_INFO(this->get_logger(), "Goal succeeded: tag within 0.01m for 3 seconds.");
+    tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
+    double cx = t_chgpp.getOrigin().x();
+    double cy = t_chgpp.getOrigin().y();
+    
+    if (std::hypot(cx, cy) < 0.01) {
+      if ((clock_->now() - success_start_time).seconds() >= 3.0) {
+        geometry_msgs::msg::Twist cmd_vel;
+        cmd_vel_pub_->publish(cmd_vel);
+        result->succeed = true;
+        goal_handle->succeed(result);
+        RCLCPP_INFO(this->get_logger(), "Goal succeeded: tag within 0.01m for 3 seconds.");
 
-          //Stop Detector
-          for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
-            i->second->stopDetection();
-          }
-          return;
+        //Stop Detector
+        for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
+          i->second->stopDetection();
         }
-      } else {
-        success_start_time = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
+        //Stop Tracking
+        tag_tracking_->stopTracking();
+        return;
       }
+    } else {
+      success_start_time = clock_->now();
     }
+    
 
     loop_rate.sleep();
   }
@@ -158,11 +191,16 @@ void MPCDocking::ratingCrossing(dddmr_docking::Trajectory &path) {
 
   double px = path.path_.poses.back().pose.position.x;
   double py = path.path_.poses.back().pose.position.y;
-
+ 
+  //@ prone alignment when distance smaller than 1.0
   tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
   double p1x = t_chgpp.getOrigin().x();
   double p1y = t_chgpp.getOrigin().y();
-
+  double distance2chgpp = hypot(p1x, p1y);
+  double weight = 1.0;
+  if(distance2chgpp<1.0)
+    weight = 5.0;
+  
   tf2::Transform t_left = tag_tracking_->getTf2B2LeftPivot();
   tf2::Transform t_right = tag_tracking_->getTf2B2RightPivot();
 
@@ -174,10 +212,10 @@ void MPCDocking::ratingCrossing(dddmr_docking::Trajectory &path) {
   double distance = 0.0;
   if (denominator > 1e-6) {
     distance = numerator / denominator;
-    path.score_ += 1.0 / (distance + 0.1);
+    path.score_ += weight / (distance + 0.1);
   } else {
     distance = std::hypot(px - p1x, py - p1y);
-    path.score_ += 1.0 / (distance + 0.1);
+    path.score_ += weight / (distance + 0.1);
   }
 }
 

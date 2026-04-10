@@ -9,6 +9,7 @@
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <tf2_ros/transform_broadcaster.h>
 
 namespace dddmr_docking
 {
@@ -22,6 +23,12 @@ public:
   tf2::Transform getTf2B2Chgpp() const { return tf2_b2chgpp_; }
   tf2::Transform getTf2B2LeftPivot() const { return tf2_b2left_pivot_; }
   tf2::Transform getTf2B2RightPivot() const { return tf2_b2right_pivot_; }
+  void startTracking();
+  void stopTracking();
+  bool isTrackingValid();
+  bool odom_received_;
+  bool tag_received_;
+  bool tf_initialized_;
 
 private:
   void checkInitTf();
@@ -32,8 +39,7 @@ private:
   rclcpp::Node* node_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-  rclcpp::TimerBase::SharedPtr init_timer_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr tracking_timer_;
   geometry_msgs::msg::PoseStamped camera_to_tag_pose_;
   geometry_msgs::msg::PoseStamped trans_tag2chgpp_;
   geometry_msgs::msg::PoseStamped trans_chgpp2left_pivot_;
@@ -51,7 +57,8 @@ private:
   tf2::Transform tf2_odom2b_;
   
   std::map<std::string, tf2::Transform> tf2_b2c_map_;
-
+  
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   nav_msgs::msg::Odometry current_odom_;
   nav_msgs::msg::Odometry latest_tag_odom_;
@@ -59,7 +66,6 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr tag_pose_sub_;
   geometry_msgs::msg::PoseStamped current_tag_pose_;
 
-  bool odom_received_;
 };
 
 }  // namespace dddmr_docking
