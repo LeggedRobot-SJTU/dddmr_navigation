@@ -7,17 +7,15 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('dddmr_docking')
     rviz_config_file = os.path.join(pkg_share, 'rviz', 'realsense_example.rviz')
 
-    cmd2odom_node = Node(
-        package='dddmr_cmd2odom_simulator',
-        executable='cmd2odom_simulator_node',
-        name='cmd2odom_simulator_node',
-        output='screen'
-    )
+    '''
+    Assume /odom is being published
+    Assume /camera/camera/color/image_raw and /camera/camera/color/camera_info are published
+    '''
 
     b2c_tf_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        name='camera_to_base_link_tf',
+        name='b2c_tf_node',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
         arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'camera_link'],
         output='screen'
@@ -26,7 +24,7 @@ def generate_launch_description():
     t2cpp_tf_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        name='camera_to_base_link_tf',
+        name='t2cpp_tf_node',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
         arguments=['-0.5', '0', '0', '0', '0', '0', 'tag', 'charging_parking_point'],
         output='screen'
@@ -35,7 +33,7 @@ def generate_launch_description():
     cpp2left_pivot_tf_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        name='camera_to_base_link_tf',
+        name='cpp2left_pivot_tf_node',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
         arguments=['-2.0', '0.5', '0', '0', '0', '0', 'charging_parking_point', 'charging_left_pivot_point'],
         output='screen'
@@ -44,7 +42,7 @@ def generate_launch_description():
     cpp2right_pivot_tf_node = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        name='camera_to_base_link_tf',
+        name='cpp2right_pivot_tf_node',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
         arguments=['-2.0', '-0.5', '0', '0', '0', '0', 'charging_parking_point', 'charging_right_pivot_point'],
         output='screen'
@@ -77,7 +75,6 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-        cmd2odom_node,
         b2c_tf_node,
         t2cpp_tf_node,
         cpp2left_pivot_tf_node,
