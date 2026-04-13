@@ -12,7 +12,7 @@ TagTracking::TagTracking(rclcpp::Node* node)
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   
-  tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*node_);
+  tf_broadcaster_ = std::make_unique<tf2_ros::StaticTransformBroadcaster>(*node_);
 
   tracking_timer_ = node_->create_wall_timer(
     50ms, std::bind(&TagTracking::onTimer, this));
@@ -79,25 +79,31 @@ void TagTracking::tagPoseCallback(const geometry_msgs::msg::PoseStamped::SharedP
       tf2::Transform tf2b2c;
       tf2::fromMsg(trans_b2c.pose, tf2b2c);
       tf2_b2c_map_[msg->header.frame_id] = tf2b2c;
+      tf2_b2c_tf_sent_map_[msg->header.frame_id] = false;
     } catch (const tf2::TransformException & ex) {
       RCLCPP_ERROR(node_->get_logger(), "Failed to lookup baselink to sensor TF: %s", ex.what());
       return; // Exit and try again next tick
     }
   }
   else{
-    geometry_msgs::msg::TransformStamped t;
-    t.header = msg->header;
-    t.child_frame_id = "tag";
 
-    t.transform.translation.x = msg->pose.position.x;
-    t.transform.translation.y = msg->pose.position.y;
-    t.transform.translation.z = msg->pose.position.z;
-    t.transform.rotation.x = msg->pose.orientation.x;
-    t.transform.rotation.y = msg->pose.orientation.y;
-    t.transform.rotation.z = msg->pose.orientation.z;
-    t.transform.rotation.w = msg->pose.orientation.w;
+    if(!tf2_b2c_tf_sent_map_.count(msg->header.frame_id)){
+      geometry_msgs::msg::TransformStamped t;
+      t.header = msg->header;
+      t.child_frame_id = "tag";
 
-    tf_broadcaster_->sendTransform(t);
+      t.transform.translation.x = msg->pose.position.x;
+      t.transform.translation.y = msg->pose.position.y;
+      t.transform.translation.z = msg->pose.position.z;
+      t.transform.rotation.x = msg->pose.orientation.x;
+      t.transform.rotation.y = msg->pose.orientation.y;
+      t.transform.rotation.z = msg->pose.orientation.z;
+      t.transform.rotation.w = msg->pose.orientation.w;
+
+      tf_broadcaster_->sendTransform(t);
+      tf2_b2c_tf_sent_map_[msg->header.frame_id] = true;
+    }
+
   }
   latest_tag_odom_ = current_odom_;
   tf2::fromMsg(current_tag_pose_.pose, tf2_c2tag_);
