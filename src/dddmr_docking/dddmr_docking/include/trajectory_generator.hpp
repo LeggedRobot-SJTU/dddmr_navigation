@@ -21,7 +21,7 @@ public:
 
   Trajectory generateTrajectory(double v, double w, double sim_time,
                                 double sim_granularity);
-  void generateTrajectories();
+  void generateTrajectories(double sim_time);
 
   std::vector<Trajectory> generated_trajectories_;
 

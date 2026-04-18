@@ -9,10 +9,11 @@ namespace dddmr_docking
 TagTracking::TagTracking(rclcpp::Node* node)
 : node_(node), odom_received_(false), tag_received_(false), tf_initialized_(false)
 {
+  clock_ = node_->get_clock();
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   
-  tf_broadcaster_ = std::make_unique<tf2_ros::StaticTransformBroadcaster>(*node_);
+  tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*node_);
 
   tracking_timer_ = node_->create_wall_timer(
     50ms, std::bind(&TagTracking::onTimer, this));
@@ -67,7 +68,7 @@ void TagTracking::odomCallback(
 
 void TagTracking::tagPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
   current_tag_pose_ = *msg;
-  if(!tf2_b2c_map_.count(msg->header.frame_id)){
+  if(!tf2_b2copt_map_.count(msg->header.frame_id)){
     try {
       geometry_msgs::msg::PoseStamped trans_b2c;
       auto transform_b2c = tf_buffer_->lookupTransform("base_link", msg->header.frame_id, tf2::TimePointZero);
@@ -78,37 +79,17 @@ void TagTracking::tagPoseCallback(const geometry_msgs::msg::PoseStamped::SharedP
       trans_b2c.pose.orientation = transform_b2c.transform.rotation;
       tf2::Transform tf2b2c;
       tf2::fromMsg(trans_b2c.pose, tf2b2c);
-      tf2_b2c_map_[msg->header.frame_id] = tf2b2c;
-      tf2_b2c_tf_sent_map_[msg->header.frame_id] = false;
+      tf2_b2copt_map_[msg->header.frame_id] = tf2b2c;
     } catch (const tf2::TransformException & ex) {
       RCLCPP_ERROR(node_->get_logger(), "Failed to lookup baselink to sensor TF: %s", ex.what());
       return; // Exit and try again next tick
     }
   }
-  else{
 
-    if(!tf2_b2c_tf_sent_map_.count(msg->header.frame_id)){
-      geometry_msgs::msg::TransformStamped t;
-      t.header = msg->header;
-      t.child_frame_id = "tag";
-
-      t.transform.translation.x = msg->pose.position.x;
-      t.transform.translation.y = msg->pose.position.y;
-      t.transform.translation.z = msg->pose.position.z;
-      t.transform.rotation.x = msg->pose.orientation.x;
-      t.transform.rotation.y = msg->pose.orientation.y;
-      t.transform.rotation.z = msg->pose.orientation.z;
-      t.transform.rotation.w = msg->pose.orientation.w;
-
-      tf_broadcaster_->sendTransform(t);
-      tf2_b2c_tf_sent_map_[msg->header.frame_id] = true;
-    }
-
-  }
   latest_tag_odom_ = current_odom_;
-  tf2::fromMsg(current_tag_pose_.pose, tf2_c2tag_);
+  tf2::fromMsg(current_tag_pose_.pose, tf2_copt2tag_);
   tf2::fromMsg(latest_tag_odom_.pose.pose, tf2_odom2lastb_);
-  tf2_lastb2tag_ = tf2_b2c_map_[msg->header.frame_id] * tf2_c2tag_;
+  tf2_lastb2tag_ = tf2_b2copt_map_[msg->header.frame_id] * tf2_copt2tag_;
   tag_received_ = true;
 }
 
@@ -178,6 +159,24 @@ void TagTracking::onTimer()
   //odom has moved:
   tf2::Transform tf2_b2lastb = tf2_odom2b_.inverse()*tf2_odom2lastb_;
   tf2::Transform tf2_b2tag = tf2_b2lastb*tf2_lastb2tag_;
+  auto tf2_b2copt = tf2_b2copt_map_[current_tag_pose_.header.frame_id];
+  
+  tf2::Transform tf2_copt2tag = tf2_b2copt.inverse()*tf2_b2tag;
+
+  geometry_msgs::msg::TransformStamped t;
+  t.header = current_tag_pose_.header;
+  t.header.stamp = clock_->now();
+  t.child_frame_id = "tag";
+
+  t.transform.translation.x = tf2_copt2tag.getOrigin().x();
+  t.transform.translation.y = tf2_copt2tag.getOrigin().y();
+  t.transform.translation.z = tf2_copt2tag.getOrigin().z();
+  t.transform.rotation.x = tf2_copt2tag.getRotation().x();
+  t.transform.rotation.y = tf2_copt2tag.getRotation().y();
+  t.transform.rotation.z = tf2_copt2tag.getRotation().z();
+  t.transform.rotation.w = tf2_copt2tag.getRotation().w();
+
+  tf_broadcaster_->sendTransform(t);
 
   tf2_b2chgpp_ = tf2_b2tag * tf2_tag2chgpp_;
   tf2_b2left_pivot_ = tf2_b2chgpp_ * tf2_chgpp2left_pivot_;

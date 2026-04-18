@@ -17,7 +17,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         name='b2c_tf_node',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
-        arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'camera_link'],
+        arguments=['0.25', '0', '0', '0', '0', '0', 'base_link', 'camera_link'],
         output='screen'
     )
 
@@ -26,7 +26,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         name='t2cpp_tf_node',
         # arguments: x, y, z, yaw, pitch, roll, parent_frame_id, child_frame_id
-        arguments=['-0.5', '0', '0', '0', '0', '0', 'tag', 'charging_parking_point'],
+        arguments=['-0.4', '0', '0', '0', '0', '0', 'tag', 'charging_parking_point'],
         output='screen'
     )
 

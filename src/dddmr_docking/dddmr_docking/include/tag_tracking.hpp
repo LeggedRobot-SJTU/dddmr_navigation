@@ -10,7 +10,6 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <tf2_ros/transform_broadcaster.h>
-#include "tf2_ros/static_transform_broadcaster.h"
 
 namespace dddmr_docking
 {
@@ -32,6 +31,9 @@ public:
   bool tf_initialized_;
 
 private:
+
+  rclcpp::Clock::SharedPtr clock_;
+
   void checkInitTf();
   void onTimer();
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg);
@@ -47,7 +49,7 @@ private:
   geometry_msgs::msg::PoseStamped trans_chgpp2right_pivot_;
   tf2::Transform tf2_b2chgpp_;
   tf2::Transform tf2_b2c_;
-  tf2::Transform tf2_c2tag_;
+  tf2::Transform tf2_copt2tag_;
   tf2::Transform tf2_tag2chgpp_;
   tf2::Transform tf2_chgpp2left_pivot_;
   tf2::Transform tf2_chgpp2right_pivot_;
@@ -57,10 +59,9 @@ private:
   tf2::Transform tf2_odom2lastb_;
   tf2::Transform tf2_odom2b_;
   
-  std::map<std::string, tf2::Transform> tf2_b2c_map_;
-  std::map<std::string, bool> tf2_b2c_tf_sent_map_;
+  std::map<std::string, tf2::Transform> tf2_b2copt_map_;
 
-  std::unique_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   nav_msgs::msg::Odometry current_odom_;
   nav_msgs::msg::Odometry latest_tag_odom_;

@@ -198,9 +198,10 @@ void MPCDocking::ratingCrossing(dddmr_docking::Trajectory &path) {
   double p1y = t_chgpp.getOrigin().y();
   double distance2chgpp = hypot(p1x, p1y);
   double weight = 1.0;
-  if(distance2chgpp<1.0)
+  if(distance2chgpp<0.2)
     weight = 5.0;
   
+    RCLCPP_INFO_THROTTLE(this->get_logger(), *clock_, 1000, "Distance to charging point: %.3f", distance2chgpp);
   tf2::Transform t_left = tag_tracking_->getTf2B2LeftPivot();
   tf2::Transform t_right = tag_tracking_->getTf2B2RightPivot();
 
@@ -220,8 +221,16 @@ void MPCDocking::ratingCrossing(dddmr_docking::Trajectory &path) {
 }
 
 void MPCDocking::controlLoop() {
-  trajectory_generator_->generateTrajectories();
 
+  tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
+  double p1x = t_chgpp.getOrigin().x();
+  double p1y = t_chgpp.getOrigin().y();
+  double distance2chgpp = hypot(p1x, p1y);
+  if(distance2chgpp<0.5)
+    trajectory_generator_->generateTrajectories(0.5);
+  else
+    trajectory_generator_->generateTrajectories(1.0);
+  
   // TODO:
   // 1 odom frame, when camera disappear, use odom
   // 2 PID in score
