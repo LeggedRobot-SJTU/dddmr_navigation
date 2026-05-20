@@ -54,8 +54,8 @@ void Local_Planner::initial(
   RCLCPP_INFO(this->get_logger(), "odom_topic_qos: %s", odom_topic_qos_.c_str());
 
   declare_parameter("ackermann_drive_topic", rclcpp::ParameterValue("ackermann_drive"));
-  this->get_parameter("ackermann_topic", ackermann_topic_);
-  RCLCPP_INFO(this->get_logger(), "ackermann_topic: %s", ackermann_topic_.c_str());
+  this->get_parameter("ackermann_drive_topic", ackermann_topic_);
+  RCLCPP_INFO(this->get_logger(), "ackermann_drive_topic: %s", ackermann_topic_.c_str());
 
   declare_parameter("compute_best_trajectory_in_odomCb", rclcpp::ParameterValue(false));
   this->get_parameter("compute_best_trajectory_in_odomCb", compute_best_trajectory_in_odomCb_);
@@ -154,6 +154,10 @@ Local_Planner::~Local_Planner(){
   tf2Buffer_.reset();
 
 }
+
+std::string Local_Planner::getControlFrame(){
+  return perception_3d_ros_->getGlobalUtils()->getRobotFrame();
+};
 
 void Local_Planner::parseCuboid(){
   marker_edge_.header.frame_id = perception_3d_ros_->getGlobalUtils()->getRobotFrame();;
@@ -353,6 +357,8 @@ void Local_Planner::setPlan(const std::vector<geometry_msgs::msg::PoseStamped>& 
   kdtree_global_plan_.reset(new pcl::KdTreeFLANN<pcl::PointXYZ>());
   kdtree_global_plan_->setInputCloud (pcl_global_plan_);
   RCLCPP_INFO_THROTTLE(this->get_logger().get_child(name_), *clock_, 10000, "Recieve new global plan.");
+  //RCLCPP_INFO(this->get_logger().get_child(name_), "Recieve new global plan: %.2f, %.2f", 
+  //    global_plan_.back().pose.position.x, global_plan_.back().pose.position.y);
 }
 
 double Local_Planner::getDistanceBTWPoseStamp(const geometry_msgs::msg::PoseStamped& a, const geometry_msgs::msg::PoseStamped& b){
@@ -511,7 +517,11 @@ dddmr_sys_core::PlannerState Local_Planner::computeVelocityCommand(std::string t
     RCLCPP_ERROR(this->get_logger().get_child(name_), "Perception 3D is not ok.");
     return dddmr_sys_core::PERCEPTION_MALFUNCTION;
   }
-    
+  
+  if(!trajectory_generators_ros_->theoryExists(traj_gen_name)){
+    RCLCPP_ERROR(this->get_logger().get_child(name_), "Specified trajectory generator: %s is not declare in yaml nor not consistent", traj_gen_name.c_str());
+    return dddmr_sys_core::CONFIGURATION_ERROR;
+  }
 
   //for timing that gives real time even in simulation
   control_loop_time_ = clock_->now();

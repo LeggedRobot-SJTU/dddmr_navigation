@@ -28,48 +28,47 @@
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef TRAJECTORY_GENERATOR_ROS_H_
-#define TRAJECTORY_GENERATOR_ROS_H_
+#include <trajectory_generators/trajectory_generator_theory.h>
+#include <trajectory_generators/omni_simple_trajectory_generator_limits.h>
+#include <trajectory_generators/omni_simple_trajectory_generator_params.h>
+#include <trajectory_generators/velocity_iterator.h>
 
-#include <trajectory_generators/stacked_generator.h>
+/*getMinMax3D*/
+#include <pcl/common/common.h>
 
 namespace trajectory_generators
 {
 
-class Trajectory_Generators_ROS : public rclcpp::Node {
-  
+class OneStateTrajectoryGeneratorTheory: public TrajectoryGeneratorTheory{
+
   public:
-    Trajectory_Generators_ROS(const std::string& name);
-    ~Trajectory_Generators_ROS();
     
-    bool hasMoreTrajectories(std::string pname);
-    bool nextTrajectory(std::string pname, base_trajectory::Trajectory& comp_traj);
-    void initializeTheories_wi_Shared_data();
+    OneStateTrajectoryGeneratorTheory();
 
-    std::shared_ptr<trajectory_generators::TrajectoryGeneratorSharedData> getSharedDataPtr(){return stacked_generator_->getSharedDataPtr();}
-
-    StackedGenerator* getStackedGeneratorPtr(){return stacked_generator_;}  
-    
-    bool theoryExists(std::string pname);
-    void initial();
+    virtual bool hasMoreTrajectories();
+    virtual bool nextTrajectory(base_trajectory::Trajectory& _traj);
 
   private:
-    
-    rclcpp::CallbackGroup::SharedPtr tf_listener_group_;
-    /*For plugin loader*/
-    pluginlib::ClassLoader<trajectory_generators::TrajectoryGeneratorTheory> theory_loader_;
-    std::vector<std::string> plugins_;
-    
+    void initialise();
+    bool isMotorConstraintSatisfied(Eigen::Vector3f& vel_samp);
+
+    bool generateTrajectory(
+        Eigen::Vector3f sample_target_vel,
+        base_trajectory::Trajectory& traj);
+
+    Eigen::Vector3f computeNewPositions(const Eigen::Vector3f& pos,
+        const Eigen::Vector3f& vel, double dt);
+
   protected:
 
-    StackedGenerator* stacked_generator_;
+    virtual void onInitialize();
 
-    std::shared_ptr<tf2_ros::TransformListener> tfl_;
-    std::shared_ptr<tf2_ros::Buffer> tf2Buffer_;  ///< @brief Used for transforming point clouds
-    std::string name_;
+    std::shared_ptr<trajectory_generators::OmniTrajectoryGeneratorLimits> limits_;
+    std::shared_ptr<trajectory_generators::OmniTrajectoryGeneratorParams> params_;
 
-
+    unsigned int next_sample_index_;
+    // to store sample params of each sample between init and generation
+    std::vector<Eigen::Vector3f> sample_params_;
 };
 
 }//end of name space
-#endif

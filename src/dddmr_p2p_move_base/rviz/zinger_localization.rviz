@@ -9,7 +9,7 @@ Panels:
         - /SubMap1/Topic1
         - /mcl_euc_cluster1/Topic1
         - /GlobalMarking1/Topic1
-      Splitter Ratio: 0.5823529362678528
+      Splitter Ratio: 0.6764705777168274
     Tree Height: 845
   - Class: rviz_common/Selection
     Name: Selection
@@ -43,7 +43,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz_default_plugins/PointCloud2
-      Color: 255; 255; 255
+      Color: 170; 255; 127
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
@@ -64,7 +64,7 @@ Visualization Manager:
         Filter size: 1
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /sub_mapcloud
+        Value: /mapcloud
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -78,7 +78,7 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz_default_plugins/PointCloud2
       Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -90,7 +90,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 2
-      Size (m): 0.20000000298023224
+      Size (m): 0.10000000149011612
       Style: Tiles
       Topic:
         Depth: 1
@@ -474,25 +474,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 20.188188552856445
+      Distance: 17.178499221801758
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -2.582472801208496
-        Y: -2.530949354171753
-        Z: 4.533203536993824e-06
+        X: 2.085563898086548
+        Y: 10.2839994430542
+        Z: 3.579529220587574e-06
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9397969245910645
+      Pitch: 1.1697967052459717
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 4.060360908508301
+      Yaw: 3.1353602409362793
     Saved: ~
 Window Geometry:
   Displays:

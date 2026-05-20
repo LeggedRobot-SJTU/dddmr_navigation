@@ -46,6 +46,9 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
 
+/*Stamped cmd*/
+#include "geometry_msgs/msg/twist_stamped.hpp"
+
 /*tf to affine*/
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <Eigen/Core>
@@ -71,7 +74,8 @@ class TrajectoryGeneratorSharedData{
     ackermann_msgs::msg::AckermannDriveStamped ackermann_drive_state_;
     nav_msgs::msg::Path prune_plan_;
     double current_allowed_max_linear_speed_;
-
+    geometry_msgs::msg::TwistStamped ref_twist_for_generate_trajectory_;
+    
     std::string global_frame_, base_frame_;
 
 
