@@ -137,7 +137,7 @@ void AprilTagTracking::detectingLoop()
   geometry_msgs::msg::PoseStamped pose_out;
   tag_detector_->detectTags(cv_image_, msg_ci_, pose_out);
 
-  //tag_detector_->drawDetections(cv_image_);
+  tag_detector_->drawDetections(cv_image_, true);
   //sensor_msgs::msg::Image::SharedPtr msg = cv_image_->toImageMsg();
   //result_image_pub_->publish(*msg);
   if(pose_out.header.frame_id!="")

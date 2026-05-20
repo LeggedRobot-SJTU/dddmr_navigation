@@ -87,6 +87,22 @@ ament_target_dependencies(docking_node
   ${dependencies}
 )
 
+add_executable(apriltag_labelling_node 
+  src/apriltag_labelling_node.cpp
+  src/apriltag_labelling.cpp
+)
+target_link_libraries(apriltag_labelling_node
+  apriltag_tracking
+)
+target_include_directories(apriltag_labelling_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(apriltag_labelling_node PUBLIC c_std_99 cxx_std_17)  # Require C++17
+
+ament_target_dependencies(apriltag_labelling_node
+  ${dependencies}
+)
+
 install(TARGETS
   cit_tag_detector
   apriltag_tracking
@@ -98,6 +114,7 @@ install(TARGETS
 #install node
 install(TARGETS
   docking_node
+  apriltag_labelling_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

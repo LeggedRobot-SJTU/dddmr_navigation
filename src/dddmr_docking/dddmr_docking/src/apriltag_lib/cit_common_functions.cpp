@@ -41,6 +41,7 @@
 #include "tagCustom48h12.h"
 #include "tagCircle21h7.h"
 #include "tagCircle49h12.h"
+#include <fstream>
 
 namespace apriltag_ros
 {
@@ -400,8 +401,10 @@ void TagDetector::makeTagPose(
 
 }
 
-void TagDetector::drawDetections (cv_bridge::CvImagePtr image)
+void TagDetector::drawDetections (cv_bridge::CvImagePtr image, bool save_drawing)
 {
+  //@ generate labelled data stream
+  std::string ids_yolo_format;
   for (int i = 0; i < zarray_size(detections_); i++)
   {
     apriltag_detection_t *det;
@@ -451,6 +454,62 @@ void TagDetector::drawDetections (cv_bridge::CvImagePtr image)
                 cv::Point((int)(det->c[0]-textsize.width/2),
                           (int)(det->c[1]+textsize.height/2)),
                 fontface, fontscale, cv::Scalar(0xff, 0x99, 0), 2);
+    
+
+    /*
+    Oriented Bounding Box (OBB) format
+    class_index x1 y1 x2 y2 x3 y3 x4 y4
+    The four corner points must be listed in clockwise order:
+    (Top-Left -> Top-Right -> Bottom-Right -> Bottom-Left) relative to the object's orientation
+    */
+    double x1 = (int)det->p[3][0]/image->image.cols;
+    double y1 = (int)det->p[3][1]/image->image.rows;
+
+    double x2 = (int)det->p[2][0]/image->image.cols;
+    double y2 = (int)det->p[2][1]/image->image.rows;
+
+    double x3 = (int)det->p[1][0]/image->image.cols;
+    double y3 = (int)det->p[1][1]/image->image.rows;
+
+    double x4 = (int)det->p[0][0]/image->image.cols;
+    double y4 = (int)det->p[0][1]/image->image.rows;
+
+    ids_yolo_format = std::to_string(tagID) + " " + \
+                        std::to_string(x1) + " " + std::to_string(y1) + " " +
+                        std::to_string(x2) + " " + std::to_string(y2) + " " +
+                        std::to_string(x3) + " " + std::to_string(y3) + " " +
+                        std::to_string(x4) + " " + std::to_string(y4) + "\n";
+  }
+
+  //@ write image and labelled stream (yolov11)
+  std::string mapping_dir_string_ = "/tmp";
+  if(zarray_size(detections_)>0){
+    std::string timestamp;
+    std::stringstream ss;
+    ss << image->header.stamp.sec << "_" << std::setw(9) << std::setfill('0') << image->header.stamp.nanosec;
+    timestamp = ss.str();
+    //to make the image name include family and tag_id
+    std::string id_all = "";
+    for (int i = 0; i < zarray_size(detections_); i++)
+    {
+      apriltag_detection_t *det;
+      zarray_get(detections_, i, &det);
+      int tagID = det->id;
+      id_all = id_all + "_" + std::to_string(tagID);
+    }
+    std::string spec = family_ + id_all;
+    std::string file_name = mapping_dir_string_ + "/" + timestamp + "_" + spec;
+    cv::imwrite(file_name + ".png", image->image);
+    
+    std::ofstream outFile(file_name + ".txt");
+    // 2. Check if the file opened successfully
+    if (outFile.is_open()) {
+        outFile << ids_yolo_format;
+        outFile.close();
+    } else {
+        std::cerr << "Unable to open file!" << std::endl;
+    }
+
   }
 }
 

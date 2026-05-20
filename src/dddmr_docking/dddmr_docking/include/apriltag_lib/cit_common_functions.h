@@ -208,7 +208,7 @@ class TagDetector
                        std::vector<cv::Point3d >& objectPoints) const;
 
   // Draw the detected tags' outlines and payload values on the image
-  void drawDetections(cv_bridge::CvImagePtr image);
+  void drawDetections(cv_bridge::CvImagePtr image, bool save_drawing);
 
 };
 
