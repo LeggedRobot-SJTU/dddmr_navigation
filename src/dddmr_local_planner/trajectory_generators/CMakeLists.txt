@@ -99,6 +99,7 @@ add_library(theories SHARED
   theories/dd_rotate_inplace_theory.cpp
   theories/dd_simple_trajectory_generator_theory.cpp
   theories/omni_simple_trajectory_generator_theory.cpp
+  theories/ackermann_simple_trajectory_generator_theory.cpp
 )
 target_link_libraries(theories
   trajectory_generator_ros
