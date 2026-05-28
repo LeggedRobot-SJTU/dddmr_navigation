@@ -6,8 +6,8 @@ using namespace std::chrono_literals;
 
 namespace dddmr_docking {
 
-AprilTagTracking::AprilTagTracking(rclcpp::Node* node, std::string name) : node_(node), name_(name), 
-img_info_get_(false), is_initial_(false){
+AprilTagTracking::AprilTagTracking(rclcpp::Node* node, std::string name, bool record_tag) : node_(node), name_(name), 
+img_info_get_(false), is_initial_(false), record_tags_(record_tag){
   
   //-----AprilTag Setup-----
   node_->declare_parameter(name_+".tag_family", rclcpp::ParameterValue("36h11"));
@@ -137,7 +137,7 @@ void AprilTagTracking::detectingLoop()
   geometry_msgs::msg::PoseStamped pose_out;
   tag_detector_->detectTags(cv_image_, msg_ci_, pose_out);
 
-  tag_detector_->drawDetections(cv_image_, true);
+  tag_detector_->drawDetections(cv_image_, record_tags_);
   //sensor_msgs::msg::Image::SharedPtr msg = cv_image_->toImageMsg();
   //result_image_pub_->publish(*msg);
   if(pose_out.header.frame_id!="")

@@ -28,7 +28,7 @@ namespace dddmr_docking {
 class AprilTagTracking
 {
 public:
-  AprilTagTracking(rclcpp::Node* node, std::string name);
+  AprilTagTracking(rclcpp::Node* node, std::string name, bool record_tag);
   ~AprilTagTracking();
   void startDetection();
   void stopDetection();
@@ -79,6 +79,7 @@ private:
 
   cv_bridge::CvImagePtr cv_image_;
   std::map<int, double> id_size_map_;
+  bool record_tags_;
 };
 
 } // namespace dddmr_docking

@@ -15,11 +15,12 @@ AprilTagLabelling::AprilTagLabelling(const std::string &name) : Node(name) {
   this->get_parameter("cameras", cameras_);
   for(auto i=cameras_.begin(); i!=cameras_.end(); i++){
     RCLCPP_INFO(this->get_logger(), "Use camera: %s", (*i).c_str());
-    apriltag_tracking_map_[(*i)] = std::make_shared<dddmr_docking::AprilTagTracking>(this, (*i));
+    bool record_tags = true;
+    apriltag_tracking_map_[(*i)] = std::make_shared<dddmr_docking::AprilTagTracking>(this, (*i), record_tags);
   }
 
   action_server_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  action_server_ = rclcpp_action::create_server<dddmr_sys_core::action::TagDocking>(
+  action_server_ = rclcpp_action::create_server<dddmr_sys_core::action::RecordApriltag>(
     this,
     "tag_docking",
     std::bind(&AprilTagLabelling::handle_goal, this, std::placeholders::_1, std::placeholders::_2),
@@ -38,27 +39,27 @@ AprilTagLabelling::~AprilTagLabelling() {}
 
 rclcpp_action::GoalResponse AprilTagLabelling::handle_goal(
   const rclcpp_action::GoalUUID & uuid,
-  std::shared_ptr<const dddmr_sys_core::action::TagDocking::Goal> goal)
+  std::shared_ptr<const dddmr_sys_core::action::RecordApriltag::Goal> goal)
 {
   (void)uuid;
   (void)goal;
-  RCLCPP_INFO(this->get_logger(), "Received goal request for TagDocking");
+  RCLCPP_INFO(this->get_logger(), "Received goal request for RecordApriltag");
   return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
 rclcpp_action::CancelResponse AprilTagLabelling::handle_cancel(
-  const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle)
+  const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::RecordApriltag>> goal_handle)
 {
   RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
   (void)goal_handle;
   return rclcpp_action::CancelResponse::ACCEPT;
 }
 
-void AprilTagLabelling::handle_accepted(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle)
+void AprilTagLabelling::handle_accepted(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::RecordApriltag>> goal_handle)
 {
   if (current_handle_ != nullptr && current_handle_->is_active()) {
     RCLCPP_INFO(this->get_logger(), "An older goal is active, cancelling current one.");
-    auto result = std::make_shared<dddmr_sys_core::action::TagDocking::Result>();
+    auto result = std::make_shared<dddmr_sys_core::action::RecordApriltag::Result>();
     result->succeed = false;
     current_handle_->abort(result);
   }
@@ -68,10 +69,10 @@ void AprilTagLabelling::handle_accepted(const std::shared_ptr<rclcpp_action::Ser
   std::thread{std::bind(&AprilTagLabelling::executeCb, this, std::placeholders::_1), goal_handle}.detach();
 }
 
-void AprilTagLabelling::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> goal_handle)
+void AprilTagLabelling::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::RecordApriltag>> goal_handle)
 {
   rclcpp::Rate loop_rate(20);
-  auto result = std::make_shared<dddmr_sys_core::action::TagDocking::Result>();
+  auto result = std::make_shared<dddmr_sys_core::action::RecordApriltag::Result>();
   
   //@ Activate Tag Detector
   for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){

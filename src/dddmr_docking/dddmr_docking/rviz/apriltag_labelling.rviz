@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded: ~
       Splitter Ratio: 0.5
-    Tree Height: 586
+    Tree Height: 390
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -13,7 +13,21 @@ Panels:
     Splitter Ratio: 0.5
 Visualization Manager:
   Class: ""
-  Displays: ~
+  Displays:
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: RS
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /camera/camera/color/image_raw
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -59,7 +73,9 @@ Window Geometry:
   Height: 801
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000019b000002cbfc0200000002fb000000100044006900730070006c006100790073010000003b000002cb000000c700fffffffb0000000a0056006900650077007300000001e200000124000000a000ffffff0000046d000002cb00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000001000000000000019b000002cbfc0200000003fb000000100044006900730070006c006100790073010000003b00000207000000c700fffffffb0000000a0056006900650077007300000001e200000124000000a000fffffffb00000004005200530100000248000000be0000002800ffffff0000046d000002cb00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  RS:
+    collapsed: false
   Views:
     collapsed: false
   Width: 1550

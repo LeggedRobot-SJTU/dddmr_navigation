@@ -171,6 +171,7 @@ class TagDetector
   bool run_quietly_;
   std::map<int, double> id_size_map_;
   tf2::Transform tf2_static_rotate_;
+  std::string mapping_dir_string_;
 
  public:
 

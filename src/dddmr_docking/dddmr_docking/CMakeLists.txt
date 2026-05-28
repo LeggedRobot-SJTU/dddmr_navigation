@@ -22,6 +22,8 @@ find_package(image_geometry REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS core calib3d)
 find_package(cv_bridge REQUIRED)
 find_package(apriltag 3.2 REQUIRED)
+find_package(dddmr_sys_core REQUIRED)
+find_package(dddmr_trt REQUIRED)
 
 set(dependencies
   rclcpp
@@ -38,9 +40,17 @@ set(dependencies
   cv_bridge
 )
 
+#Check yolo build flag
+if(NOT TRT_ENABLED)
+    set(TRT_ENABLED OFF CACHE BOOL "Enable or disable TensorRT")
+endif()
+
+
 include_directories(
   include
+  ${OpenCV_INCLUDE_DIRS}
   ${dddmr_sys_core_INCLUDE_DIRS}
+  ${dddmr_trt_INCLUDE_DIRS}
 )
 
 # cit tag
@@ -120,6 +130,7 @@ install(TARGETS
 
 install(PROGRAMS
   scripts/trigger_mpc_docking.py
+  scripts/trigger_record_apriltag.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
