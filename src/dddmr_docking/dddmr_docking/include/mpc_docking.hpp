@@ -1,8 +1,6 @@
 #ifndef DDDMR_DOCKING__MPC_DOCKING_HPP_
 #define DDDMR_DOCKING__MPC_DOCKING_HPP_
 
-#include "tag_tracking.hpp"
-#include "trajectory_generator.hpp"
 #include "apriltag_tracking.hpp"
 #include <memory>
 #include <string>
@@ -23,11 +21,6 @@ public:
 private:
   
   rclcpp::Clock::SharedPtr clock_;
-  
-  void controlLoop();
-
-  std::unique_ptr<dddmr_docking::TagTracking> tag_tracking_;
-  std::unique_ptr<dddmr_docking::TrajectoryGenerator> trajectory_generator_;
 
   rclcpp_action::GoalResponse handle_goal(
       const rclcpp_action::GoalUUID &uuid,
@@ -44,8 +37,6 @@ private:
   rclcpp::CallbackGroup::SharedPtr action_server_group_;
   std::shared_ptr<rclcpp_action::ServerGoalHandle<dddmr_sys_core::action::TagDocking>> current_handle_;
 
-  void ratingChgPP(dddmr_docking::Trajectory &path);
-  void ratingCrossing(dddmr_docking::Trajectory &path);
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
 
   std::vector<std::string> cameras_;

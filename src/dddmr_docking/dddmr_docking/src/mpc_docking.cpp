@@ -10,10 +10,6 @@ MPCDocking::MPCDocking(const std::string &name) : Node(name) {
 
   clock_ = this->get_clock();
 
-  tag_tracking_ = std::make_unique<dddmr_docking::TagTracking>(this);
-  trajectory_generator_ =
-      std::make_unique<dddmr_docking::TrajectoryGenerator>(this);
-
   //@Start to load cameras
   this->declare_parameter("cameras", rclcpp::PARAMETER_STRING_ARRAY);
   this->get_parameter("cameras", cameras_);
@@ -93,7 +89,9 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
 
   RCLCPP_INFO(this->get_logger(), "Executing goal");
 
+
   while(rclcpp::ok() && goal_handle->is_active()) {
+
     if (goal_handle->is_canceling()) {
       goal_handle->canceled(result);
       RCLCPP_INFO(this->get_logger(), "Goal canceled");
@@ -101,170 +99,8 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
       cmd_vel_pub_->publish(cmd_vel);
       return;
     }
-    
-    //@ if tracking does not come within 3 seconds, we abort
-    if(!tag_tracking_->isTrackingValid()){
-      if ((clock_->now() - tracking_start_time).seconds() >= 3.0){
-        geometry_msgs::msg::Twist cmd_vel;
-        cmd_vel_pub_->publish(cmd_vel);
-        result->succeed = false;
-        goal_handle->abort(result);
-
-        RCLCPP_ERROR(this->get_logger(), 
-              "Goal aborted: tracking is not valid for 3 seconds: odom: %d, tag: %d, tf: %d",
-               tag_tracking_->odom_received_, tag_tracking_->tag_received_, tag_tracking_->tf_initialized_);
-
-        //Stop Detector
-        for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
-          i->second->stopDetection();
-        }
-        //Stop Tracking
-        tag_tracking_->stopTracking();
-        return;
-      }
-      continue;
-    }
-    else{
-      tracking_start_time = clock_->now();
-    }
-      
-
-    controlLoop();
-
-    tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
-    double cx = t_chgpp.getOrigin().x();
-    double cy = t_chgpp.getOrigin().y();
-    
-    if (std::hypot(cx, cy) < 0.01) {
-      if ((clock_->now() - success_start_time).seconds() >= 3.0) {
-        geometry_msgs::msg::Twist cmd_vel;
-        cmd_vel_pub_->publish(cmd_vel);
-        result->succeed = true;
-        goal_handle->succeed(result);
-        RCLCPP_INFO(this->get_logger(), "Goal succeeded: tag within 0.01m for 3 seconds.");
-
-        //Stop Detector
-        for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
-          i->second->stopDetection();
-        }
-        //Stop Tracking
-        tag_tracking_->stopTracking();
-        return;
-      }
-    } else {
-      success_start_time = clock_->now();
-    }
-    
 
     loop_rate.sleep();
-  }
-}
-
-void MPCDocking::ratingChgPP(dddmr_docking::Trajectory &path) {
-
-  if (path.score_<0 || path.path_.poses.empty() || !tag_tracking_) {
-    path.score_ = -1;
-    return;
-  }
-
-  double px = path.path_.poses.back().pose.position.x;
-  double py = path.path_.poses.back().pose.position.y;
-
-  tf2::Transform tf2_b2chgpp = tag_tracking_->getTf2B2Chgpp();
-  double cx = tf2_b2chgpp.getOrigin().x();
-  double cy = tf2_b2chgpp.getOrigin().y();
-
-  double distance = std::hypot(px - cx, py - cy);
-
-  // Using the distance as a penalty for the score, e.g.:
-  path.score_ += 10.0 / (distance + 0.1); // max score 10
-
-  //RCLCPP_INFO(node_->get_logger(), "distance: %.3f, linear: %.2f, angular: %.2f, score: %.2f",
-  //            distance, path.v_, path.w_, path.score_);
-}
-
-void MPCDocking::ratingCrossing(dddmr_docking::Trajectory &path) {
-
-  if (path.score_<0 || path.path_.poses.size() < 2 || !tag_tracking_) {
-    path.score_ = -1;
-    return;
-  }
-
-  double px = path.path_.poses.back().pose.position.x;
-  double py = path.path_.poses.back().pose.position.y;
- 
-  //@ prone alignment when distance smaller than 1.0
-  tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
-  double p1x = t_chgpp.getOrigin().x();
-  double p1y = t_chgpp.getOrigin().y();
-  double distance2chgpp = hypot(p1x, p1y);
-  double weight = 1.0;
-  if(distance2chgpp<0.2)
-    weight = 5.0;
-  
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *clock_, 1000, "Distance to charging point: %.3f", distance2chgpp);
-  tf2::Transform t_left = tag_tracking_->getTf2B2LeftPivot();
-  tf2::Transform t_right = tag_tracking_->getTf2B2RightPivot();
-
-  double p2x = (t_left.getOrigin().x() + t_right.getOrigin().x()) / 2.0;
-  double p2y = (t_left.getOrigin().y() + t_right.getOrigin().y()) / 2.0;
-
-  double numerator = std::abs((p2x - p1x) * (p1y - py) - (p1x - px) * (p2y - p1y));
-  double denominator = std::hypot(p2x - p1x, p2y - p1y);
-  double distance = 0.0;
-  if (denominator > 1e-6) {
-    distance = numerator / denominator;
-    path.score_ += weight / (distance + 0.1);
-  } else {
-    distance = std::hypot(px - p1x, py - p1y);
-    path.score_ += weight / (distance + 0.1);
-  }
-}
-
-void MPCDocking::controlLoop() {
-
-  tf2::Transform t_chgpp = tag_tracking_->getTf2B2Chgpp();
-  double p1x = t_chgpp.getOrigin().x();
-  double p1y = t_chgpp.getOrigin().y();
-  double distance2chgpp = hypot(p1x, p1y);
-  if(distance2chgpp<0.5)
-    trajectory_generator_->generateTrajectories(0.5);
-  else
-    trajectory_generator_->generateTrajectories(1.0);
-  
-  // TODO:
-  // 1 odom frame, when camera disappear, use odom
-  // 2 PID in score
-  // 3 backward motion
-  //  Higher score better
-  for (auto it = trajectory_generator_->generated_trajectories_.begin();
-       it != trajectory_generator_->generated_trajectories_.end(); it++) {
-    //ratingInTriangle(*it);
-    //
-    //ratingCrossing(*it);
-    ratingCrossing(*it);
-    ratingChgPP(*it);;
-  }
-
-  if (!trajectory_generator_->generated_trajectories_.empty()) {
-    auto best_traj_it = std::max_element(
-        trajectory_generator_->generated_trajectories_.begin(),
-        trajectory_generator_->generated_trajectories_.end(),
-        [](const dddmr_docking::Trajectory &a,
-           const dddmr_docking::Trajectory &b) { return a.score_ < b.score_; });
-
-    if (best_traj_it != trajectory_generator_->generated_trajectories_.end()) {
-      //RCLCPP_INFO(node_->get_logger(),
-      //            "Best trajectory score: %f, v: %f, w: %f",
-      //            best_traj_it->score_, best_traj_it->v_, best_traj_it->w_);
-
-      geometry_msgs::msg::Twist cmd_vel;
-      cmd_vel.linear.x = best_traj_it->v_;
-      cmd_vel.angular.z = best_traj_it->w_;
-      if (cmd_vel_pub_) {
-        cmd_vel_pub_->publish(cmd_vel);
-      }
-    }
   }
 }
 

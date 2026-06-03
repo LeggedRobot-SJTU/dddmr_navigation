@@ -21,7 +21,6 @@ find_package(image_geometry REQUIRED)
 
 find_package(OpenCV REQUIRED COMPONENTS core calib3d)
 find_package(cv_bridge REQUIRED)
-find_package(apriltag 3.2 REQUIRED)
 find_package(dddmr_sys_core REQUIRED)
 find_package(dddmr_trt REQUIRED)
 
@@ -45,103 +44,63 @@ if(NOT TRT_ENABLED)
     set(TRT_ENABLED OFF CACHE BOOL "Enable or disable TensorRT")
 endif()
 
+if(TRT_ENABLED)
 
-include_directories(
-  include
-  ${OpenCV_INCLUDE_DIRS}
-  ${dddmr_sys_core_INCLUDE_DIRS}
-  ${dddmr_trt_INCLUDE_DIRS}
-)
+  add_definitions(-DTRT_ENABLED) 
+  find_package(CUDAToolkit REQUIRED)
 
-# cit tag
-add_library(cit_tag_detector
-  src/apriltag_lib/cit_common_functions.cpp
-)
-target_link_libraries(cit_tag_detector
-  apriltag::apriltag
-  Eigen3::Eigen
-  opencv_core
-)
-ament_target_dependencies(cit_tag_detector
-  ${dependencies}
-)
-set_property(TARGET cit_tag_detector PROPERTY
-    POSITION_INDEPENDENT_CODE ON
-)
+  message(STATUS "TensorRT is enabled. Compiling TRT and YOLO features")
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "cmake")
+  
+  include_directories(
+    include
+    ${OpenCV_INCLUDE_DIRS}
+    ${dddmr_sys_core_INCLUDE_DIRS}
+    ${dddmr_trt_INCLUDE_DIRS}
+  )
 
-add_library(apriltag_tracking SHARED
-  src/apriltag_tracking.cpp
-)
-target_link_libraries(apriltag_tracking
-  cit_tag_detector
-)
-ament_target_dependencies(apriltag_tracking
-  ${dependencies}
-)
+  add_library(apriltag_trt_tracking SHARED
+    src/apriltag_trt_tracking.cpp
+  )
+  target_link_libraries(apriltag_trt_tracking
+    ${PCL_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    ${dddmr_trt_LIBRARIES}
+    CUDA::cudart
+  )
+  target_include_directories(apriltag_trt_tracking 
+    PRIVATE ${CUDAToolkit_INCLUDE_DIRS}
+  )
+  ament_target_dependencies(apriltag_trt_tracking
+    ${dependencies}
+  )
 
-add_executable(docking_node 
-  src/docking_node.cpp
-  src/mpc_docking.cpp
-  src/tag_tracking.cpp
-  src/trajectory_generator.cpp
-)
-target_link_libraries(docking_node
-  apriltag_tracking
-)
-target_include_directories(docking_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(docking_node PUBLIC c_std_99 cxx_std_17)  # Require C++17
+  install(TARGETS
+    apriltag_trt_tracking
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+  )
 
-ament_target_dependencies(docking_node
-  ${dependencies}
-)
+  #install node
+  install(TARGETS
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
+  )
 
-add_executable(apriltag_labelling_node 
-  src/apriltag_labelling_node.cpp
-  src/apriltag_labelling.cpp
-)
-target_link_libraries(apriltag_labelling_node
-  apriltag_tracking
-)
-target_include_directories(apriltag_labelling_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(apriltag_labelling_node PUBLIC c_std_99 cxx_std_17)  # Require C++17
+  install(PROGRAMS
+    DESTINATION lib/${PROJECT_NAME}
+  )
 
-ament_target_dependencies(apriltag_labelling_node
-  ${dependencies}
-)
+  install(DIRECTORY
+    launch
+    config
+    rviz
+    DESTINATION share/${PROJECT_NAME}
+  )
 
-install(TARGETS
-  cit_tag_detector
-  apriltag_tracking
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+  ament_export_include_directories(include)
+  ament_export_libraries(apriltag_trt_tracking)
+  ament_export_dependencies(${dependencies})
+  ament_package()
 
-#install node
-install(TARGETS
-  docking_node
-  apriltag_labelling_node
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
-install(PROGRAMS
-  scripts/trigger_mpc_docking.py
-  scripts/trigger_record_apriltag.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-install(DIRECTORY
-  launch
-  config
-  rviz
-  DESTINATION share/${PROJECT_NAME}
-)
-
-ament_export_include_directories(include)
-ament_export_libraries(cit_tag_detector apriltag_tracking)
-ament_export_dependencies(${dependencies})
-ament_package()
+endif()
