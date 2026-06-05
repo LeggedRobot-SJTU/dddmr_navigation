@@ -5,7 +5,7 @@
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  auto mpc_docking = std::make_shared<dddmr_docking::MPCDocking>("docking_node");
+  auto mpc_docking = std::make_shared<dddmr_docking::MPCDocking>("dddmr_docking");
 
   rclcpp::spin(mpc_docking);
   rclcpp::shutdown();

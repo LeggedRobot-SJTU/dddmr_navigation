@@ -5,12 +5,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_share = get_package_share_directory('dddmr_docking')
-    rviz_config_file = os.path.join(pkg_share, 'rviz', 'apriltag_labelling.rviz')
-
-    '''
-    Assume /odom is being published
-    Assume /camera/camera/color/image_raw and /camera/camera/color/camera_info are published
-    '''
+    rviz_config_file = os.path.join(pkg_share, 'rviz', 'apriltag_inference.rviz')
 
     rviz_node = Node(
         package='rviz2',
@@ -23,13 +18,13 @@ def generate_launch_description():
     the_yaml = os.path.join(
         get_package_share_directory('dddmr_docking'),
         'config',
-        'apriltag_labelling.yaml'
+        'apriltag_inference.yaml'
     )
 
     apriltag_labelling_node = Node(
         package='dddmr_docking',
-        executable='apriltag_labelling_node',
-        name='apriltag_labelling_node',
+        executable='dddmr_docking',
+        name='dddmr_docking',
         parameters = [the_yaml],
         output='screen'
     )

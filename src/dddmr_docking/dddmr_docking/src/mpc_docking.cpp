@@ -16,7 +16,7 @@ MPCDocking::MPCDocking(const std::string &name) : Node(name) {
   for(auto i=cameras_.begin(); i!=cameras_.end(); i++){
     RCLCPP_INFO(this->get_logger(), "Use camera: %s", (*i).c_str());
     bool record_tags = false;
-    apriltag_tracking_map_[(*i)] = std::make_shared<dddmr_docking::AprilTagTracking>(this, (*i), record_tags);
+    apriltag_tracking_map_[(*i)] = std::make_shared<dddmr_docking::AprilTagTrtTracking>(this, (*i), record_tags);
   }
 
   cmd_vel_pub_ =
@@ -84,8 +84,6 @@ void MPCDocking::executeCb(const std::shared_ptr<rclcpp_action::ServerGoalHandle
   for(auto i=apriltag_tracking_map_.begin();i!=apriltag_tracking_map_.end();i++){
     i->second->startDetection();
   }
-  //@ ACtivate Tag Tracking
-  tag_tracking_->startTracking();
 
   RCLCPP_INFO(this->get_logger(), "Executing goal");
 

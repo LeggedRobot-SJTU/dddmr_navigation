@@ -75,8 +75,30 @@ if(TRT_ENABLED)
     ${dependencies}
   )
 
+  add_library(mpc_docking SHARED
+    src/mpc_docking.cpp
+  )
+  target_link_libraries(mpc_docking
+    apriltag_trt_tracking
+  )
+  ament_target_dependencies(mpc_docking
+    ${dependencies}
+  )
+
+  #node
+  add_executable(dddmr_docking
+    src/docking_node.cpp
+  )
+  target_link_libraries(dddmr_docking 
+    mpc_docking
+  )
+  ament_target_dependencies(dddmr_docking
+    ${dependencies}
+  )
+
   install(TARGETS
     apriltag_trt_tracking
+    mpc_docking
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
@@ -84,10 +106,12 @@ if(TRT_ENABLED)
 
   #install node
   install(TARGETS
+    dddmr_docking
     RUNTIME DESTINATION lib/${PROJECT_NAME}
   )
 
   install(PROGRAMS
+    scripts/trigger_mpc_docking.py
     DESTINATION lib/${PROJECT_NAME}
   )
 
@@ -95,11 +119,12 @@ if(TRT_ENABLED)
     launch
     config
     rviz
+    engine
     DESTINATION share/${PROJECT_NAME}
   )
 
   ament_export_include_directories(include)
-  ament_export_libraries(apriltag_trt_tracking)
+  ament_export_libraries(apriltag_trt_tracking mpc_docking)
   ament_export_dependencies(${dependencies})
   ament_package()
 

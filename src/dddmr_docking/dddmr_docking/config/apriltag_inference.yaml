@@ -1,0 +1,12 @@
+# dddmr_docking parameters
+dddmr_docking:
+  ros__parameters:
+    use_sim_time: false
+    cameras: ["camera1"]
+    camera1:
+      trt_model_path: "/root/dddmr_navigation/src/dddmr_docking/dddmr_docking/engine/apriltag_yolov11.trt"  
+      detect_tag_frequency: 30.0
+      topic_image_raw: /camera/camera/color/image_raw
+      topic_image_info: /camera/camera/color/camera_info
+
+          

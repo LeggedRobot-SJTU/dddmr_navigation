@@ -24,9 +24,11 @@ img_info_get_(false){
   node_->get_parameter(name_+".detect_tag_frequency", detect_tag_frequency_);
   RCLCPP_INFO(node_->get_logger().get_child(name_), "detect_tag_frequency: %.1f", detect_tag_frequency_);
 
-  node_->declare_parameter(".trt_model_path", rclcpp::ParameterValue(""));
-  node_->get_parameter(".trt_model_path", trt_model_path_);
-  RCLCPP_INFO(node_->get_logger(), ".trt_model_path: %s" , trt_model_path_.c_str());
+  node_->declare_parameter(name_+".trt_model_path", rclcpp::ParameterValue(""));
+  node_->get_parameter(name_+".trt_model_path", trt_model_path_);
+  RCLCPP_INFO(node_->get_logger().get_child(name_), "trt_model_path: %s" , trt_model_path_.c_str());
+  
+  pub_annotated_img_ = node_->create_publisher<sensor_msgs::msg::Image>(name_+"/annotated_image", 1);
 
   if (std::filesystem::exists(trt_model_path_)) {
     is_trt_engine_exist_ = true;
@@ -35,10 +37,13 @@ img_info_get_(false){
 #ifdef TRT_ENABLED
   if(is_trt_engine_exist_){
     YoloV8Config config;
+    config.segH = 200; //trained model size divide by 4
+    config.segW = 200; //trained model size divide by 4
     yolov8_ = std::make_shared<YoloV8>("", trt_model_path_, config);
+    RCLCPP_INFO(node_->get_logger().get_child(name_), "%s load trt model: %s",name_.c_str(), trt_model_path_.c_str());
   }
   else{
-    RCLCPP_ERROR(node_->get_logger(), "\033[1;31mtensorRT is specified but %s does not exist\033[0m", trt_model_path_.c_str());
+    RCLCPP_ERROR(node_->get_logger().get_child(name_), "\033[1;31mtensorRT is specified but %s does not exist\033[0m", trt_model_path_.c_str());
   }
 #endif
 
@@ -94,6 +99,36 @@ void AprilTagTrtTracking::detectingLoop()
     return;
   }
 
+  // Run inference
+  const auto objects = yolov8_->detectObjects(cv_image_->image);
+
+  // Draw the bounding boxes on the image
+  yolov8_->drawObjectLabels(cv_image_->image, objects);
+  
+  /*
+  // Remove object from projected_image
+  cv::Mat full_sized_mask = cv::Mat::zeros(inferenced_image.size(), CV_8UC1);
+  for (const auto &object : objects) {
+
+    //@ label=0 is people, remove it
+    if(object.label==0){
+      cv::Mat roi_mask = full_sized_mask(object.rect);
+      object.boxMask.copyTo(roi_mask);
+    }
+    //cv::Size imageSize = object.boxMask.size();
+    //RCLCPP_INFO(this->get_logger(), "object class: %d, confidence: %.2f", object.label, object.probability);
+  }
+  cv::Mat inverted_mask;
+  cv::bitwise_not(full_sized_mask, inverted_mask);
+  cv::bitwise_and(inferenced_image, inferenced_image, range_mat_removing_moving_object_, inverted_mask);
+  */
+
+  cv_bridge::CvImage img_annotated;
+  img_annotated.image = cv_image_->image;
+  //img_annotated.encoding = sensor_msgs::image_encodings::TYPE_8UC3;
+  img_annotated.encoding = sensor_msgs::image_encodings::RGB8;
+  sensor_msgs::msg::Image::SharedPtr ros2_annotated_img = img_annotated.toImageMsg();
+  pub_annotated_img_->publish(*ros2_annotated_img);
 }
 
 void AprilTagTrtTracking::imageCallback(const sensor_msgs::msg::Image::SharedPtr msg) {

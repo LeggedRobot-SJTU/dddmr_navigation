@@ -43,7 +43,9 @@ private:
 
   std::string topic_image_raw_;
   std::string topic_image_info_;
-
+  
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_annotated_img_;
+  
   void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg);
   void cameraInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
   void detectingLoop();
