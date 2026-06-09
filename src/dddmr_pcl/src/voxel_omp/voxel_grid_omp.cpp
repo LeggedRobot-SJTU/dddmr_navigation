@@ -53,15 +53,20 @@ size_t AssignTask(const std::vector<std::shared_ptr<std::vector<int>>>& index_al
     }
     // 确定每个进程分配voxel索引的上下界
     std::sort(sampled_data.begin(), sampled_data.end());
-    tasks->resize(thread_num);
-    int pad_size = sampled_data.size()%thread_num;
-    int pivot_step = sampled_data.size()/thread_num;
-    for(int i=0; i<thread_num; ++i){
+    if (sampled_data.empty() || thread_num <= 0) {
+        tasks->clear();
+        return total;
+    }
+    int task_num = std::min<int>(thread_num, sampled_data.size());
+    tasks->resize(task_num);
+    int pad_size = sampled_data.size()%task_num;
+    int pivot_step = sampled_data.size()/task_num;
+    for(int i=0; i<task_num; ++i){
         int start = pivot_step*i;
         start += (i>pad_size?pad_size:i);
         int pivot_start = sampled_data[start];
         int pivot_end;
-        if(i+1<thread_num){
+        if(i+1<task_num){
             int end = pivot_step*(i+1);
             end += (i+1>pad_size?pad_size:i+1);
             pivot_end = sampled_data[end];
@@ -71,7 +76,7 @@ size_t AssignTask(const std::vector<std::shared_ptr<std::vector<int>>>& index_al
         for(size_t j=0; j<cur_task.size(); ++j){
             auto start_it = std::lower_bound(index_all_thread[j]->begin(), index_all_thread[j]->end(),pivot_start);
             cur_task[j].first = int(start_it - index_all_thread[j]->begin());
-            if(i+1>=thread_num){
+            if(i+1>=task_num){
                 cur_task[j].second = index_all_thread[j]->size();
             }else{
                 auto end_it = std::lower_bound(index_all_thread[j]->begin(), index_all_thread[j]->end(),pivot_end);
@@ -398,8 +403,14 @@ pcl::VoxelGridOMP::applyFilter(PointCloud &output)
     //merge cloud from all threads
     std::vector<std::vector<std::pair<int, int>>> tasks;
     size_t total = AssignTask(index_all_threads, threads_, &tasks);
-    std::vector<PointCloudPtr> final_clouds(threads_);
-#pragma omp parallel num_threads(threads_)
+    if (total == 0 || tasks.empty()) {
+        output.width = output.height = 0;
+        output.points.clear();
+        return;
+    }
+    const int merge_threads = static_cast<int>(tasks.size());
+    std::vector<PointCloudPtr> final_clouds(merge_threads);
+#pragma omp parallel num_threads(merge_threads)
     {
         int thread_id = omp_get_thread_num();
         auto& task = tasks[thread_id];
@@ -408,7 +419,7 @@ pcl::VoxelGridOMP::applyFilter(PointCloud &output)
             cur[i]=task[i].first;
         }
         PointCloudPtr cloud(new PointCloud());
-        cloud->reserve(total/threads_);
+        cloud->reserve(total/merge_threads);
         while(true){
             bool finished = true;
             int min_voxel_index = std::numeric_limits<int>::max();
@@ -457,10 +468,18 @@ pcl::VoxelGridOMP::applyFilter(PointCloud &output)
     for(auto& cloud: final_clouds){
         final_num += cloud->size();
     }
+    if (final_num == 0) {
+        output.width = output.height = 0;
+        output.points.clear();
+        return;
+    }
     output.resize(final_num);
     char* dst= reinterpret_cast<char*>(&output[0]);
     size_t offset = 0;
     for(auto& cloud: final_clouds){
+        if (cloud->empty()) {
+            continue;
+        }
         size_t copy_size = cloud->size()*sizeof(PointT);
         char* src = reinterpret_cast<char*>(&((cloud->points)[0]));
         std::memcpy(dst+offset, src, copy_size);
